@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let allProducts = [];
   let currentBrands = [];
   let currentCategories = [];
-  let showCtvPrice = localStorage.getItem('cobe_show_ctv_price') !== 'false';
   let currentTheme = localStorage.getItem('cobe_theme') || 'denim';
   let activeStatus = 'all';
   let activeBrand = 'all';
@@ -26,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const brandTabs = document.getElementById('brandTabs');
   const categoryChips = document.getElementById('categoryChips');
   const sortSelect = document.getElementById('sortSelect');
-  const btnTogglePrice = document.getElementById('btnTogglePrice');
   const btnThemeToggle = document.getElementById('btnThemeToggle');
   const themeMenu = document.getElementById('themeMenu');
   const statusSyncText = document.getElementById('statusSyncText');
@@ -66,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function init() {
     applyTheme(currentTheme);
-    updatePriceToggleUI();
     setupEventListeners();
     renderSkeletons();
     await loadStats();
@@ -141,15 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.classList.add('active');
       activeCategory = btn.dataset.category;
       fetchProducts();
-    });
-
-    // Toggle CTV Price Visibility
-    btnTogglePrice.addEventListener('click', () => {
-      showCtvPrice = !showCtvPrice;
-      localStorage.setItem('cobe_show_ctv_price', showCtvPrice);
-      updatePriceToggleUI();
-      renderProducts(allProducts);
-      showToast(showCtvPrice ? 'Đã hiển thị giá CTV' : 'Đã ẩn giá CTV (Bảo mật trước mặt khách)');
     });
 
     // Theme Switcher Dropdown
@@ -444,11 +432,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Toggle Price UI
-  function updatePriceToggleUI() {
-    btnTogglePrice.classList.toggle('active', showCtvPrice);
-  }
-
   // Render Skeletons for Instant Perceived Performance
   function renderSkeletons() {
     productsContainer.innerHTML = Array(6).fill(0).map(() => `
@@ -619,7 +602,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const retailPriceFmt = new Intl.NumberFormat('vi-VN').format(product.retailPrice) + 'đ';
-      const ctvPriceFmt = new Intl.NumberFormat('vi-VN').format(product.ctvPrice) + 'đ';
 
       // Colors & Sizes HTML
       const matrixHtml = Object.keys(colorGroups).map(color => {
@@ -694,7 +676,6 @@ document.addEventListener('DOMContentLoaded', () => {
               <div>
                 <div class="pricing-strip">
                   <span class="retail-amount">${retailPriceFmt}</span>
-                  ${showCtvPrice ? `<span class="ctv-amount-badge">CTV: ${ctvPriceFmt}</span>` : ''}
                 </div>
                 <div class="stock-headline ${stockHeadlineClass}">
                   ${stockHeadlineText}

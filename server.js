@@ -503,7 +503,6 @@ function parseExcelBufferToProducts(buffer) {
         name: name,
         category: 'Cobe Denim',
         retailPrice: rawPrice > 0 ? rawPrice : 350000,
-        ctvPrice: rawPrice > 0 ? Math.round(rawPrice * 0.75) : 260000,
         imageUrl: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80',
         description: `Sản phẩm ${name} chính hãng Cobe Denim.`,
         updatedAt: new Date().toISOString(),
@@ -805,8 +804,6 @@ async function performSyncFromMShopKeeper(token, branchId) {
               ? Number(master.UnitPrice)
               : 350000;
 
-          const ctvPrice = Math.round(retailPrice * 0.75);
-
           const imgUrl = picId
             ? `https://cobedenim.mshopkeeper.vn/backendg2/api/Image?id=${picId}.jpg&type=1&mode=pad&CompanyCode=cobedenim`
             : getCategoryPlaceholder(cat, master.InventoryItemName);
@@ -847,7 +844,6 @@ async function performSyncFromMShopKeeper(token, branchId) {
             fullCategory,
             color: colorName,
             retailPrice,
-            ctvPrice,
             pictureId: picId,
             imageUrl: imgUrl,
             description: `Sản phẩm ${displayName} chính hãng ${brand}.`,
@@ -863,7 +859,6 @@ async function performSyncFromMShopKeeper(token, branchId) {
         if (picId) picCount++;
 
         const retailPrice = Number(master.UnitPrice) > 0 ? Number(master.UnitPrice) : 350000;
-        const ctvPrice = Math.round(retailPrice * 0.75);
         const imgUrl = picId
           ? `https://cobedenim.mshopkeeper.vn/backendg2/api/Image?id=${picId}.jpg&type=1&mode=pad&CompanyCode=cobedenim`
           : getCategoryPlaceholder(cat, master.InventoryItemName);
@@ -887,7 +882,6 @@ async function performSyncFromMShopKeeper(token, branchId) {
           fullCategory,
           color: master.Color || 'Tiêu chuẩn',
           retailPrice,
-          ctvPrice,
           pictureId: picId,
           imageUrl: imgUrl,
           description: `Sản phẩm ${master.InventoryItemName} chính hãng ${brand}.`,
