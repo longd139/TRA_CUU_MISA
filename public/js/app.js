@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentBrands = [];
   let currentCategories = [];
   let currentTheme = localStorage.getItem('cobe_theme') || 'denim';
+  if (currentTheme !== 'light') currentTheme = 'denim';
   let activeStatus = 'all';
   let activeBrand = 'all';
   let activeCategory = 'all';
@@ -26,7 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const categoryChips = document.getElementById('categoryChips');
   const sortSelect = document.getElementById('sortSelect');
   const btnThemeToggle = document.getElementById('btnThemeToggle');
-  const themeMenu = document.getElementById('themeMenu');
+  const themeIconSun = document.getElementById('themeIconSun');
+  const themeIconMoon = document.getElementById('themeIconMoon');
   const statusSyncText = document.getElementById('statusSyncText');
   const statTotalModels = document.getElementById('statTotalModels');
   const statTotalStock = document.getElementById('statTotalStock');
@@ -140,34 +142,14 @@ document.addEventListener('DOMContentLoaded', () => {
       fetchProducts();
     });
 
-    // Theme Switcher Dropdown
-    btnThemeToggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = themeMenu.style.display === 'flex';
-      themeMenu.style.display = isOpen ? 'none' : 'flex';
-    });
-
-    document.querySelectorAll('.theme-opt').forEach(opt => {
-      opt.addEventListener('click', () => {
-        const theme = opt.dataset.theme;
-        applyTheme(theme);
-        themeMenu.style.display = 'none';
-        const themeNames = {
-          denim: 'Denim Indigo (Gốc)',
-          light: 'Sáng Thanh Lịch',
-          midnight: 'Đen Midnight OLED',
-          vintage: 'Nâu Da Bò Retro',
-          rose: 'Hồng Y2K Denim'
-        };
-        showToast(`Đã đổi giao diện sang ${themeNames[theme] || theme}`);
+    // Toggle Light / Dark Mode directly
+    if (btnThemeToggle) {
+      btnThemeToggle.addEventListener('click', () => {
+        const newTheme = currentTheme === 'light' ? 'denim' : 'light';
+        applyTheme(newTheme);
+        showToast(newTheme === 'light' ? 'Đã chuyển sang giao diện Sáng' : 'Đã chuyển sang giao diện Tối');
       });
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.theme-dropdown-wrap')) {
-        themeMenu.style.display = 'none';
-      }
-    });
+    }
 
     // Lightbox events
     btnCloseLightbox.addEventListener('click', closeLightbox);
@@ -422,14 +404,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Apply Theme
+  // Apply Theme (Light / Dark)
   function applyTheme(theme) {
+    if (theme !== 'light') theme = 'denim';
     currentTheme = theme;
     localStorage.setItem('cobe_theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
-    document.querySelectorAll('.theme-opt').forEach(opt => {
-      opt.classList.toggle('active', opt.dataset.theme === theme);
-    });
+
+    if (themeIconSun && themeIconMoon) {
+      if (theme === 'light') {
+        themeIconSun.style.display = 'none';
+        themeIconMoon.style.display = 'block';
+        btnThemeToggle.setAttribute('title', 'Chuyển sang giao diện Tối');
+      } else {
+        themeIconSun.style.display = 'block';
+        themeIconMoon.style.display = 'none';
+        btnThemeToggle.setAttribute('title', 'Chuyển sang giao diện Sáng');
+      }
+    }
   }
 
   // Render Skeletons for Instant Perceived Performance

@@ -4,6 +4,7 @@
    ========================================================================== */
 
 :root,
+[data-theme="dark"],
 [data-theme="denim"] {
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
@@ -91,75 +92,6 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.12);
-}
-
-/* Midnight Black: Pure OLED Contrast */
-[data-theme="midnight"] {
-  --bg-canvas: #000000;
-  --bg-surface: #0a0a0a;
-  --bg-surface-elevated: #141414;
-  --bg-surface-hover: #1f1f1f;
-  --bg-inset: #050505;
-
-  --accent-primary: #6366f1;
-  --accent-primary-hover: #4f46e5;
-  --accent-subtle: rgba(99, 102, 241, 0.15);
-  --accent-border: rgba(99, 102, 241, 0.35);
-
-  --stitching-gold: #eab308;
-  --stitching-subtle: rgba(234, 179, 8, 0.14);
-
-  --text-primary: #ffffff;
-  --text-secondary: #a3a3a3;
-  --text-tertiary: #737373;
-  --border-hairline: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.2);
-}
-
-/* Vintage Retro Leather: Raw Heritage Craft */
-[data-theme="vintage"] {
-  --bg-canvas: #120e0b;
-  --bg-surface: #1a140f;
-  --bg-surface-elevated: #261d16;
-  --bg-surface-hover: #33261d;
-  --bg-inset: #140e0a;
-
-  --accent-primary: #d97706;
-  --accent-primary-hover: #b45309;
-  --accent-subtle: rgba(217, 119, 6, 0.14);
-  --accent-border: rgba(217, 119, 6, 0.35);
-
-  --stitching-gold: #fbbf24;
-  --stitching-subtle: rgba(251, 191, 36, 0.15);
-
-  --text-primary: #fef3c7;
-  --text-secondary: #d5c4b1;
-  --text-tertiary: #9c8b78;
-  --border-hairline: rgba(254, 243, 199, 0.1);
-  --border-strong: rgba(254, 243, 199, 0.2);
-}
-
-/* Rose Y2K Denim: Contemporary Fashion Accent */
-[data-theme="rose"] {
-  --bg-canvas: #140a12;
-  --bg-surface: #1d0f1a;
-  --bg-surface-elevated: #2b1626;
-  --bg-surface-hover: #3a1d33;
-  --bg-inset: #160a13;
-
-  --accent-primary: #ec4899;
-  --accent-primary-hover: #db2777;
-  --accent-subtle: rgba(236, 72, 153, 0.14);
-  --accent-border: rgba(236, 72, 153, 0.35);
-
-  --stitching-gold: #fb7185;
-  --stitching-subtle: rgba(251, 113, 133, 0.15);
-
-  --text-primary: #fdf2f8;
-  --text-secondary: #fbcfe8;
-  --text-tertiary: #b886a8;
-  --border-hairline: rgba(244, 114, 182, 0.12);
-  --border-strong: rgba(244, 114, 182, 0.22);
 }
 
 /* Base Reset */
@@ -296,82 +228,20 @@ body {
   transform: rotate(180deg);
 }
 
-/* Theme Menu Dropdown */
-.theme-dropdown-wrap {
-  position: relative;
-}
-
-.theme-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 0.4rem;
-  min-width: 200px;
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  z-index: 50;
-  animation: popIn 0.15s ease;
-}
-
-@keyframes popIn {
-  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.theme-menu-header {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 0.4rem 0.6rem 0.25rem;
-}
-
-.theme-opt {
-  display: flex;
+/* Icon-Only Action Button */
+.icon-only-btn {
+  padding: 0.45rem;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.5rem 0.65rem;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.12s ease;
-  width: 100%;
+  justify-content: center;
 }
 
-.theme-opt:hover {
-  background: var(--bg-surface-hover);
-  color: var(--text-primary);
+.icon-only-btn .svg-icon {
+  width: 19px;
+  height: 19px;
 }
-
-.theme-opt.active {
-  background: var(--accent-subtle);
-  color: var(--accent-primary);
-}
-
-.swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
-  flex-shrink: 0;
-}
-
-.swatch.denim { background: #3b82f6; }
-.swatch.light { background: #ffffff; border-color: #94a3b8; }
-.swatch.midnight { background: #000000; border-color: #555555; }
-.swatch.vintage { background: #d97706; }
-.swatch.rose { background: #ec4899; }
 
 /* ==========================================================================
    PULSE STATUS BAR

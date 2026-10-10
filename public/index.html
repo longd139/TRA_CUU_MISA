@@ -27,40 +27,16 @@
       </div>
 
       <div class="header-actions">
-        <!-- Theme Switcher -->
-        <div class="theme-dropdown-wrap">
-          <button id="btnThemeToggle" class="action-btn" title="Đổi màu giao diện">
-            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-              <circle cx="12" cy="12" r="9"/>
-              <path d="M12 3a9 9 0 0 1 0 18v-18z" fill="currentColor" fill-opacity="0.3"/>
-            </svg>
-            <span class="btn-label">Giao diện</span>
-          </button>
-          
-          <div id="themeMenu" class="theme-menu" style="display: none;">
-            <div class="theme-menu-header">Chọn phong cách màu</div>
-            <button class="theme-opt active" data-theme="denim">
-              <span class="swatch denim"></span>
-              <span class="opt-text">Denim Indigo (Gốc)</span>
-            </button>
-            <button class="theme-opt" data-theme="light">
-              <span class="swatch light"></span>
-              <span class="opt-text">Sáng Thanh Lịch</span>
-            </button>
-            <button class="theme-opt" data-theme="midnight">
-              <span class="swatch midnight"></span>
-              <span class="opt-text">Đen Midnight OLED</span>
-            </button>
-            <button class="theme-opt" data-theme="vintage">
-              <span class="swatch vintage"></span>
-              <span class="opt-text">Nâu Da Bò Retro</span>
-            </button>
-            <button class="theme-opt" data-theme="rose">
-              <span class="swatch rose"></span>
-              <span class="opt-text">Hồng Y2K Denim</span>
-            </button>
-          </div>
-        </div>
+        <!-- Theme Toggle (Light / Dark) -->
+        <button id="btnThemeToggle" class="action-btn icon-only-btn" title="Chuyển sang giao diện Sáng" aria-label="Chuyển đổi giao diện sáng tối">
+          <svg id="themeIconSun" class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+          </svg>
+          <svg id="themeIconMoon" class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          </svg>
+        </button>
 
         <!-- MShopKeeper Sync Trigger -->
         <button id="btnOpenSync" class="action-btn sync-btn" title="Quản lý đồng bộ MShopKeeper">
