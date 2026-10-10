@@ -87,41 +87,21 @@
           <button id="btnClearSearch" class="btn-clear" style="display: none;" title="Xóa tìm kiếm">✕</button>
         </div>
 
-        <!-- Dedicated Size Filter Dropdown directly beside the input -->
-        <div class="search-size-select-wrap">
+        <!-- Dedicated Size Input directly beside the main search input -->
+        <div class="search-size-input-wrap">
           <svg class="size-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 8H3m18 8H3M7 4v16m10-16v16"/>
           </svg>
-          <select id="sizeFilterSelect" class="search-size-select" aria-label="Tìm theo Size">
-            <option value="all">📏 Tất cả Size</option>
-            <optgroup label="Áo / Đồ lót (Chữ)">
-              <option value="XS">Size XS</option>
-              <option value="S">Size S</option>
-              <option value="M">Size M</option>
-              <option value="L">Size L</option>
-              <option value="XL">Size XL</option>
-              <option value="XXL">Size XXL</option>
-              <option value="FREESIZE">Freesize</option>
-            </optgroup>
-            <optgroup label="Quần (Size số)">
-              <option value="28">Size 28</option>
-              <option value="29">Size 29</option>
-              <option value="30">Size 30</option>
-              <option value="31">Size 31</option>
-              <option value="32">Size 32</option>
-              <option value="33">Size 33</option>
-              <option value="34">Size 34</option>
-              <option value="36">Size 36</option>
-            </optgroup>
-            <optgroup label="Giày / Dép">
-              <option value="39">Size 39</option>
-              <option value="40">Size 40</option>
-              <option value="41">Size 41</option>
-              <option value="42">Size 42</option>
-              <option value="43">Size 43</option>
-              <option value="44">Size 44</option>
-            </optgroup>
-          </select>
+          <input 
+            type="text" 
+            id="sizeInput" 
+            class="search-size-input" 
+            placeholder="Size (S, L, 32...)" 
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          >
+          <button id="btnClearSize" class="btn-clear-size" style="display: none;" title="Xóa lọc size">✕</button>
         </div>
       </div>
 

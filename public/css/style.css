@@ -341,8 +341,8 @@ body {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Dedicated Size Select beside search input */
-.search-size-select-wrap {
+/* Dedicated Size Input beside search input */
+.search-size-input-wrap {
   position: relative;
   display: flex;
   align-items: center;
@@ -351,16 +351,22 @@ body {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  min-width: 165px;
+  width: 175px;
   flex-shrink: 0;
 }
 
-.search-size-select-wrap:focus-within {
+@media (max-width: 640px) {
+  .search-size-input-wrap {
+    width: 100%;
+  }
+}
+
+.search-size-input-wrap:focus-within {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
-.search-size-select-wrap .size-icon {
+.search-size-input-wrap .size-icon {
   position: absolute;
   left: 0.85rem;
   width: 16px;
@@ -369,39 +375,43 @@ body {
   pointer-events: none;
 }
 
-.search-size-select {
+.search-size-input {
   width: 100%;
-  height: 100%;
-  padding: 0.95rem 1.8rem 0.95rem 2.35rem;
+  padding: 0.95rem 2rem 0.95rem 2.35rem;
   background: transparent;
   border: none;
   font-family: var(--font-sans);
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--text-primary);
-  cursor: pointer;
   outline: none;
-  appearance: none;
-  -webkit-appearance: none;
 }
 
-.search-size-select option,
-.search-size-select optgroup {
-  background: var(--bg-surface);
-  color: var(--text-primary);
+.search-size-input::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  font-size: 0.82rem;
 }
 
-.search-size-select-wrap::after {
-  content: "";
+.btn-clear-size {
   position: absolute;
-  right: 0.95rem;
-  width: 7px;
-  height: 7px;
-  border-right: 2px solid var(--text-tertiary);
-  border-bottom: 2px solid var(--text-tertiary);
-  transform: rotate(45deg);
-  pointer-events: none;
-  margin-top: -3px;
+  right: 0.75rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.btn-clear-size:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
 }
 
 .search-field-wrap:focus-within {

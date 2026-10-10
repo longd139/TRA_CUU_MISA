@@ -104,15 +104,36 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Dedicated Size Filter Select beside search input
-    const sizeFilterSelect = document.getElementById('sizeFilterSelect');
-    if (sizeFilterSelect) {
-      sizeFilterSelect.addEventListener('change', (e) => {
-        activeSize = e.target.value;
-        // Sync quick size chips
+    // Dedicated Size Search Input beside main search input
+    const sizeInput = document.getElementById('sizeInput');
+    const btnClearSize = document.getElementById('btnClearSize');
+    let sizeDebounceTimer = null;
+
+    if (sizeInput) {
+      sizeInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        btnClearSize.style.display = val ? 'flex' : 'none';
+        activeSize = val || 'all';
+
+        // Sync with quick size chips
         document.querySelectorAll('.size-chip').forEach(b => {
           b.classList.toggle('active', b.dataset.size.toUpperCase() === activeSize.toUpperCase());
         });
+
+        clearTimeout(sizeDebounceTimer);
+        sizeDebounceTimer = setTimeout(() => {
+          fetchProducts();
+        }, 180);
+      });
+
+      btnClearSize.addEventListener('click', () => {
+        sizeInput.value = '';
+        btnClearSize.style.display = 'none';
+        activeSize = 'all';
+        document.querySelectorAll('.size-chip').forEach(b => {
+          b.classList.toggle('active', b.dataset.size === 'all');
+        });
+        sizeInput.focus();
         fetchProducts();
       });
     }
@@ -122,7 +143,10 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => {
         const sizeVal = btn.dataset.size;
         activeSize = sizeVal;
-        if (sizeFilterSelect) sizeFilterSelect.value = sizeVal;
+        if (sizeInput) {
+          sizeInput.value = sizeVal === 'all' ? '' : sizeVal;
+          if (btnClearSize) btnClearSize.style.display = sizeVal === 'all' ? 'none' : 'flex';
+        }
         document.querySelectorAll('.size-chip').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         fetchProducts();

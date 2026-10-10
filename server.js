@@ -104,16 +104,17 @@ app.get('/api/products', (req, res) => {
   }
 
   // Size filter
-  if (size && size !== 'all') {
+  if (size && size !== 'all' && size.trim()) {
     const targetSize = size.toUpperCase().trim();
     products = products.filter(p => {
       return (p.variants || []).some(v => {
         const vSize = String(v.size || '').toUpperCase().trim();
         const hasStock = Number(v.stock) > 0;
+        const matchesSize = vSize === targetSize || (targetSize.length >= 3 && vSize.includes(targetSize));
         if (status === 'out_of_stock') {
-          return vSize === targetSize;
+          return matchesSize;
         }
-        return vSize === targetSize && hasStock;
+        return matchesSize && hasStock;
       });
     });
   }
