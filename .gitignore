@@ -9,3 +9,4 @@ __pycache__/
 downloads/
 *.xlsx
 .agents/
+data/api-keys.json

@@ -1,0 +1,11 @@
+[
+  {
+    "id": "client_example_01",
+    "name": "Khách hàng Mẫu (Example Partner)",
+    "apiKey": "cobe_pk_live_your_public_key_here",
+    "apiSecret": "cobe_sk_live_your_secret_key_here",
+    "status": "active",
+    "createdAt": "2026-10-10T00:00:00.000Z",
+    "notes": "Mẫu cấu hình API Key - Không lưu khóa thật lên GitHub"
+  }
+]

@@ -4,10 +4,21 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
+const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const XLSX = require('xlsx');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Security: Disable express fingerprinting & apply defensive HTTP headers
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -15,6 +26,160 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const DATA_FILE = path.join(__dirname, 'data', 'products.json');
 const CONFIG_FILE = path.join(__dirname, 'data', 'sync-config.json');
+const API_KEYS_FILE = path.join(__dirname, 'data', 'api-keys.json');
+
+// Rate Limiter 1: Public Web (Người dùng thật & CTV tra cứu trên giao diện)
+// 180 request/phút/IP. Người dùng duyệt web gõ phím bình thường chỉ tốn 5-15 req/phút nên không bao giờ bị nghẽn!
+const webRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 180,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    code: 'RATE_LIMIT_EXCEEDED',
+    message: 'Tần suất thao tác quá nhanh từ IP của bạn. Vui lòng thử lại sau 1 phút.'
+  }
+});
+
+// Rate Limiter 2: Admin & Sync routes (Bảo vệ đồng bộ MShopKeeper chống spam & bruteforce PIN)
+const adminRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    code: 'ADMIN_RATE_LIMIT_EXCEEDED',
+    message: 'Thao tác đồng bộ hoặc xác thực quá nhiều lần. Vui lòng thử lại sau 1 phút.'
+  }
+});
+
+// Rate Limiter 3: Commercial API (Dành riêng cho đối tác kết nối qua API Key)
+const commercialRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    code: 'COMMERCIAL_RATE_LIMIT_EXCEEDED',
+    message: 'Vượt quá giới hạn tần suất truy vấn thương mại (60 requests/phút). Vui lòng thử lại sau.'
+  }
+});
+
+// Heuristic Bot/Scraper Detection for Public Web Route
+function botDetectionMiddleware(req, res, next) {
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+  const knownScrapers = ['python-requests', 'aiohttp', 'scrapy', 'curl/', 'wget/', 'httpie', 'postmanruntime'];
+  const isScraper = knownScrapers.some(bot => ua.includes(bot));
+
+  if (isScraper && !req.headers['x-api-key']) {
+    return res.status(403).json({
+      success: false,
+      code: 'AUTOMATION_BLOCKED',
+      message: 'Cổng Web công khai từ chối các công cụ cào dữ liệu tự động (Scrapers/Bots). Vui lòng sử dụng Commercial API có xác thực chữ ký HMAC.'
+    });
+  }
+  next();
+}
+
+// In-memory Nonce Cache chống Replay Attack (lưu nonce trong 2 phút)
+const seenNonces = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [nonce, expiresAt] of seenNonces.entries()) {
+    if (expiresAt <= now) seenNonces.delete(nonce);
+  }
+}, 5 * 60 * 1000);
+
+// Helper: Read API keys
+function getApiKeys() {
+  try {
+    if (!fs.existsSync(API_KEYS_FILE)) return [];
+    return JSON.parse(fs.readFileSync(API_KEYS_FILE, 'utf-8'));
+  } catch (err) {
+    return [];
+  }
+}
+
+// Commercial API HMAC-SHA256 Signature Middleware
+function verifyCommercialHmac(req, res, next) {
+  const apiKey = req.headers['x-api-key'];
+  const timestamp = parseInt(req.headers['x-timestamp'], 10);
+  const nonce = req.headers['x-nonce'];
+  const clientSignature = req.headers['x-signature'];
+
+  if (!apiKey || !timestamp || !nonce || !clientSignature) {
+    return res.status(401).json({
+      success: false,
+      code: 'AUTH_MISSING_HEADERS',
+      message: 'Thiếu thông tin xác thực bắt buộc: x-api-key, x-timestamp, x-nonce, x-signature'
+    });
+  }
+
+  const keys = getApiKeys();
+  const client = keys.find(k => k.apiKey === apiKey);
+  if (!client) {
+    return res.status(401).json({
+      success: false,
+      code: 'INVALID_API_KEY',
+      message: 'API Key không tồn tại trên hệ thống.'
+    });
+  }
+
+  if (client.status !== 'active') {
+    return res.status(403).json({
+      success: false,
+      code: 'API_KEY_INACTIVE',
+      message: 'API Key đang trong trạng thái tạm ngưng hoặc chưa kích hoạt.'
+    });
+  }
+
+  const now = Date.now();
+  const diff = Math.abs(now - timestamp);
+  // Cho phép độ lệch tối đa 60 giây giữa đồng hồ client và server
+  if (isNaN(timestamp) || diff > 60 * 1000) {
+    return res.status(401).json({
+      success: false,
+      code: 'REQUEST_EXPIRED',
+      message: `Thời gian request không hợp lệ hoặc đã hết hạn (lệch ${Math.round(diff / 1000)}s so với máy chủ).`
+    });
+  }
+
+  // Chống Replay Attack bằng Nonce
+  if (seenNonces.has(nonce)) {
+    return res.status(401).json({
+      success: false,
+      code: 'REPLAY_ATTACK_DETECTED',
+      message: 'Nonce đã được sử dụng. Mỗi request bắt buộc sử dụng một nonce ngẫu nhiên duy nhất.'
+    });
+  }
+  seenNonces.set(nonce, now + 2 * 60 * 1000);
+
+  // Tạo HMAC-SHA256 chuẩn: METHOD + ":" + PATH (đã chuẩn hóa) + ":" + TIMESTAMP + ":" + NONCE
+  const rawPath = req.originalUrl.split('?')[0];
+  const targetPath = rawPath.toLowerCase().replace(/\/+$/, '') || '/';
+  const canonicalString = `${req.method.toUpperCase()}:${targetPath}:${timestamp}:${nonce}`;
+  const expectedSignature = crypto
+    .createHmac('sha256', client.apiSecret)
+    .update(canonicalString)
+    .digest('hex');
+
+  const match = clientSignature.length === expectedSignature.length &&
+    crypto.timingSafeEqual(Buffer.from(clientSignature), Buffer.from(expectedSignature));
+
+  if (!match) {
+    return res.status(401).json({
+      success: false,
+      code: 'INVALID_SIGNATURE',
+      message: 'Chữ ký số (HMAC-SHA256 signature) không chính xác.'
+    });
+  }
+
+  req.authClient = client;
+  next();
+}
 
 // Helper: Remove Vietnamese tones for accent-insensitive search
 function removeVietnameseTones(str) {
@@ -27,7 +192,6 @@ function removeVietnameseTones(str) {
   str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, 'u');
   str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, 'y');
   str = str.replace(/đ/g, 'd');
-  // Combine accents removal
   str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return str.trim();
 }
@@ -69,10 +233,10 @@ function saveConfig(cfg) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf-8');
 }
 
-// API: Get products with fuzzy search, filters, pagination
-app.get('/api/products', (req, res) => {
-  const { q = '', brand = 'all', category = 'all', status = 'all', size = 'all', sort = 'default', page = 1, limit = 24 } = req.query;
-  let products = getProducts();
+// Shared Filtering and Sorting Logic
+function filterAndSortProducts(allProducts, queryParams) {
+  const { q = '', brand = 'all', category = 'all', status = 'all', size = 'all', sort = 'default' } = queryParams;
+  let products = [...allProducts];
 
   // Search filter
   if (q.trim()) {
@@ -147,8 +311,16 @@ app.get('/api/products', (req, res) => {
     products.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
   }
 
-  // Aggregated Brands and Categories for UI
+  return products;
+}
+
+// API: Public Web Products Endpoint (Bảo vệ bằng webRateLimiter & botDetectionMiddleware)
+app.get('/api/products', webRateLimiter, botDetectionMiddleware, (req, res) => {
+  const { q = '', brand = 'all', category = 'all', status = 'all', size = 'all', sort = 'default', page = 1, limit = 24 } = req.query;
   const allProducts = getProducts();
+  const products = filterAndSortProducts(allProducts, { q, brand, category, status, size, sort });
+
+  // Aggregated Brands and Categories for UI
   const brandCounts = {};
   const categoryCounts = {};
 
@@ -156,7 +328,6 @@ app.get('/api/products', (req, res) => {
     const b = p.brand || 'Khác';
     brandCounts[b] = (brandCounts[b] || 0) + 1;
 
-    // Filter categories based on selected brand if brand is active
     if (brand === 'all' || (p.brand || '').toLowerCase() === brand.toLowerCase()) {
       const c = p.category || 'Khác';
       categoryCounts[c] = (categoryCounts[c] || 0) + 1;
@@ -178,7 +349,8 @@ app.get('/api/products', (req, res) => {
   const parsedPage = Math.max(1, parseInt(page, 10) || 1);
 
   if (limit !== 'all') {
-    const parsedLimit = Math.max(1, parseInt(limit, 10) || 24);
+    // Ép tối đa 100 sản phẩm / trang để chống cào thô
+    const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 24));
     totalPages = Math.ceil(total / parsedLimit) || 1;
     const startIndex = (parsedPage - 1) * parsedLimit;
     pagedProducts = products.slice(startIndex, startIndex + parsedLimit);
@@ -188,10 +360,50 @@ app.get('/api/products', (req, res) => {
     success: true,
     total,
     page: parsedPage,
-    limit: limit === 'all' ? 'all' : (parseInt(limit, 10) || 24),
+    limit: limit === 'all' ? 'all' : Math.min(100, parseInt(limit, 10) || 24),
     totalPages,
     brands,
     categories,
+    products: pagedProducts
+  });
+});
+
+// COMMERCIAL API V1: Healthcheck & Ping (Bảo vệ bằng HMAC Chữ ký số)
+app.get('/api/v1/ping', commercialRateLimiter, verifyCommercialHmac, (req, res) => {
+  res.json({
+    success: true,
+    message: 'Xác thực Commercial API thành công!',
+    client: {
+      id: req.authClient.id,
+      name: req.authClient.name
+    },
+    serverTime: new Date().toISOString()
+  });
+});
+
+// COMMERCIAL API V1: Get Products (Bảo vệ bằng HMAC + Nonce + Timestamp + Giới hạn tải)
+app.get('/api/v1/products', commercialRateLimiter, verifyCommercialHmac, (req, res) => {
+  const { q = '', brand = 'all', category = 'all', status = 'all', size = 'all', sort = 'default', page = 1, limit = 20 } = req.query;
+  const allProducts = getProducts();
+  const products = filterAndSortProducts(allProducts, { q, brand, category, status, size, sort });
+
+  // Giới hạn an toàn: tối đa 50 sản phẩm mỗi lượt gọi (không cho phép limit=all để chống cào sập kho)
+  const safeLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+  const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+  const total = products.length;
+  const totalPages = Math.ceil(total / safeLimit) || 1;
+  const startIndex = (parsedPage - 1) * safeLimit;
+  const pagedProducts = products.slice(startIndex, startIndex + safeLimit);
+
+  res.json({
+    success: true,
+    meta: {
+      authClient: req.authClient.name,
+      total,
+      page: parsedPage,
+      limit: safeLimit,
+      totalPages
+    },
     products: pagedProducts
   });
 });
@@ -562,7 +774,7 @@ function parseExcelBufferToProducts(buffer) {
 }
 
 // API: Upload and parse Excel inventory exported from MShopKeeper
-app.post('/api/sync/upload-excel', (req, res) => {
+app.post('/api/sync/upload-excel', adminRateLimiter, (req, res) => {
   const { fileData } = req.body;
   if (!fileData) {
     return res.status(400).json({ success: false, message: 'Thiếu dữ liệu file' });
@@ -955,7 +1167,7 @@ async function performSyncFromMShopKeeper(token, branchId) {
 }
 
 // API: Trigger MShopKeeper Live Sync
-app.post('/api/sync/mshopkeeper', async (req, res) => {
+app.post('/api/sync/mshopkeeper', adminRateLimiter, async (req, res) => {
   const { token, endpoint, branchId, userId, userName, layoutCode, reportId, demoMode = false } = req.body;
   const config = getConfig();
 
@@ -986,8 +1198,8 @@ app.post('/api/sync/mshopkeeper', async (req, res) => {
   return res.status(result.expired ? 401 : 400).json(result);
 });
 
-// API: Verify Admin PIN
-app.post('/api/sync/verify-pin', (req, res) => {
+// API: Verify Admin PIN (Bảo vệ chống bruteforce dò mã PIN)
+app.post('/api/sync/verify-pin', adminRateLimiter, (req, res) => {
   const { pin } = req.body;
   const config = getConfig();
   const validPin = config.adminPin || '1234';
@@ -999,7 +1211,7 @@ app.post('/api/sync/verify-pin', (req, res) => {
 });
 
 // API: Direct Import JSON / Excel normalized data
-app.post('/api/sync/import', (req, res) => {
+app.post('/api/sync/import', adminRateLimiter, (req, res) => {
   const { products } = req.body;
   if (!Array.isArray(products) || products.length === 0) {
     return res.status(400).json({ success: false, message: 'Danh sách sản phẩm không hợp lệ' });
