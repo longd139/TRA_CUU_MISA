@@ -652,8 +652,10 @@ document.addEventListener('DOMContentLoaded', () => {
                       <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
                     </svg>
                   </span>
-                  ${product.brand ? `<span class="brand-tag">${product.brand}</span>` : ''}
-                  <span class="category-name">${product.category}</span>
+                  <div class="eyebrow-tags">
+                    ${product.brand ? `<span class="brand-tag">${product.brand}</span>` : ''}
+                    <span class="category-name">${product.category}</span>
+                  </div>
                 </div>
                 <h2 class="product-name-heading" title="${product.name}">${product.name}</h2>
               </div>
