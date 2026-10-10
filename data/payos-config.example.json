@@ -1,0 +1,9 @@
+{
+  "clientId": "your_payos_client_id_here",
+  "apiKey": "your_payos_api_key_here",
+  "checksumKey": "your_payos_checksum_key_here",
+  "price": 100000,
+  "durationDays": 30,
+  "returnUrl": "http://localhost:3000/developer.html",
+  "cancelUrl": "http://localhost:3000/developer.html"
+}

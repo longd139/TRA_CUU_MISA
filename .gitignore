@@ -10,3 +10,9 @@ downloads/
 *.xlsx
 .agents/
 data/api-keys.json
+data/payos-config.json
+data/users.json
+data/transactions.json
+data/jwt-secret.json
+data/cloudinary-config.json
+.wrangler/

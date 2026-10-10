@@ -71,8 +71,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnTriggerTokenSync = document.getElementById('btnTriggerTokenSync');
   const btnImportJson = document.getElementById('btnImportJson');
   const tokenInput = document.getElementById('tokenInput');
-  const jsonImportInput = document.getElementById('jsonImportInput');
   const syncFeedback = document.getElementById('syncFeedback');
+
+  // Live Sync & Image Fill Progress Tracker Elements
+  const syncProgressCard = document.getElementById('syncProgressCard');
+  const syncProgressTitle = document.getElementById('syncProgressTitle');
+  const syncProgressPercent = document.getElementById('syncProgressPercent');
+  const syncProgressBar = document.getElementById('syncProgressBar');
+  const syncProgressDetail = document.getElementById('syncProgressDetail');
+  const syncProgressElapsed = document.getElementById('syncProgressElapsed');
+  const syncImageExtraRow = document.getElementById('syncImageExtraRow');
+  const statImgProcessed = document.getElementById('statImgProcessed');
+  const statImgFilled = document.getElementById('statImgFilled');
+  const statImgSkipped = document.getElementById('statImgSkipped');
+  const btnCancelFillImages = document.getElementById('btnCancelFillImages');
+  const btnStartFillImages = document.getElementById('btnStartFillImages');
+  let progressPollingTimer = null;
 
   // Initialize
   init();
@@ -315,6 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTriggerDemoSync.addEventListener('click', async () => {
       btnTriggerDemoSync.disabled = true;
       btnTriggerDemoSync.textContent = '⏳ Đang đồng bộ kho...';
+      startProgressPolling('sync');
       try {
         const res = await fetch('/api/sync/mshopkeeper', {
           method: 'POST',
@@ -334,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showSyncFeedback('Lỗi kết nối máy chủ', 'error');
       } finally {
         btnTriggerDemoSync.disabled = false;
-        btnTriggerDemoSync.textContent = '⚡ Cập Nhật Dữ Liệu Kho Ngay';
+        btnTriggerDemoSync.textContent = '⚡ Làm Mới Dữ Liệu Kho Tức Thì';
       }
     });
 
@@ -449,7 +464,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       btnTriggerTokenSync.disabled = true;
-      btnTriggerTokenSync.textContent = '⏳ Đang kết nối MShopKeeper...';
+      btnTriggerTokenSync.textContent = '⏳ Đang đồng bộ từ MShopKeeper...';
+      startProgressPolling('sync');
       try {
         const res = await fetch('/api/sync/mshopkeeper', {
           method: 'POST',
@@ -461,17 +477,54 @@ document.addEventListener('DOMContentLoaded', () => {
           showSyncFeedback(data.message, 'success');
           await loadStats();
           await fetchProducts();
-          showToast('Đã kết nối kho MShopKeeper!');
+          showToast('Đã đồng bộ kho MShopKeeper thành công!');
         } else {
           showSyncFeedback(data.message, 'error');
         }
       } catch (err) {
-        showSyncFeedback('Lỗi kết nối máy chủ', 'error');
+        showSyncFeedback('Lỗi kết nối máy chủ: ' + err.message, 'error');
       } finally {
         btnTriggerTokenSync.disabled = false;
-        btnTriggerTokenSync.textContent = '🔗 Đồng Bộ Dữ Liệu Trực Tiếp';
+        btnTriggerTokenSync.textContent = '🔗 Kết Nối & Đồng Bộ Bằng Token Này';
       }
     });
+
+    // Tab 4: Cloudinary Image Fill Event Listeners
+    if (btnStartFillImages) {
+      btnStartFillImages.addEventListener('click', async () => {
+        btnStartFillImages.disabled = true;
+        btnStartFillImages.textContent = '⏳ Đang bắt đầu quét ảnh...';
+        hideSyncFeedback();
+        try {
+          const res = await fetch('/api/sync/fill-images', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            showSyncFeedback('Đã bắt đầu tiến trình quét và nạp ảnh nền!', 'success');
+            startProgressPolling('images');
+          } else {
+            showSyncFeedback(data.message, 'error');
+            btnStartFillImages.disabled = false;
+            btnStartFillImages.textContent = '🚀 Bắt Đầu Quét & Nạp Ảnh Lên Cloudinary';
+          }
+        } catch (err) {
+          showSyncFeedback('Lỗi kết nối máy chủ: ' + err.message, 'error');
+          btnStartFillImages.disabled = false;
+          btnStartFillImages.textContent = '🚀 Bắt Đầu Quét & Nạp Ảnh Lên Cloudinary';
+        }
+      });
+    }
+
+    if (btnCancelFillImages) {
+      btnCancelFillImages.addEventListener('click', async () => {
+        btnCancelFillImages.disabled = true;
+        try {
+          const res = await fetch('/api/sync/fill-images/cancel', { method: 'POST' });
+          const data = await res.json();
+          showSyncFeedback(data.message || 'Đã gửi yêu cầu dừng quét ảnh.', 'info');
+        } catch (e) {}
+        setTimeout(() => { btnCancelFillImages.disabled = false; }, 1500);
+      });
+    }
 
     // Import JSON
     btnImportJson.addEventListener('click', async () => {
@@ -835,12 +888,13 @@ document.addEventListener('DOMContentLoaded', () => {
         <article class="product-card" data-sku="${product.sku}">
           <!-- Card Upper: Media & Info -->
           <div class="card-hero">
-            <div class="product-photo-link" onclick="openLightboxBySku('${product.sku}')">
+            <div class="product-photo-link is-loading" onclick="openLightboxBySku('${product.sku}')">
               <img 
                 src="${product.imageUrl}" 
                 alt="${product.name}" 
                 loading="lazy"
-                onerror="if(!this.dataset.tried){this.dataset.tried='1';if(this.src.includes('.png'))this.src=this.src.replace('.png','.jpg');else if(this.src.includes('.jpg'))this.src=this.src.replace('.jpg','.png');}else{this.src='https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=400&q=80';}"
+                onload="this.classList.add('loaded'); this.parentElement.classList.remove('is-loading');"
+                onerror="this.classList.add('loaded'); this.parentElement.classList.remove('is-loading'); if(!this.dataset.tried){this.dataset.tried='1';if(this.src.includes('.png'))this.src=this.src.replace('.png','.jpg');else if(this.src.includes('.jpg'))this.src=this.src.replace('.jpg','.png');}else{this.src='https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=400&q=80';}"
               >
               <div class="zoom-overlay-badge">
                 <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -973,11 +1027,99 @@ document.addEventListener('DOMContentLoaded', () => {
   function openSyncModal() {
     syncModal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    startProgressPolling('auto');
   }
 
   function closeSyncModal() {
     syncModal.style.display = 'none';
     document.body.style.overflow = '';
+  }
+
+  // Real-time Progress Polling Function
+  function startProgressPolling(mode = 'auto') {
+    if (progressPollingTimer) clearInterval(progressPollingTimer);
+
+    async function poll() {
+      try {
+        const res = await fetch('/api/sync/progress');
+        const data = await res.json();
+        if (!data.success) return;
+
+        const sync = data.sync;
+        const images = data.images;
+        const isSyncRunning = sync && sync.running;
+        const isImagesRunning = images && images.running;
+
+        if (isImagesRunning) {
+          syncProgressCard.style.display = 'block';
+          syncProgressTitle.textContent = '🖼️ Đang quét & nạp ảnh thật lên Cloudinary...';
+          syncProgressPercent.textContent = `${images.percent}%`;
+          syncProgressBar.style.width = `${images.percent}%`;
+          syncProgressDetail.textContent = images.currentSku 
+            ? `Mã: ${images.currentSku} — ${images.message}` 
+            : images.message;
+          syncProgressElapsed.textContent = `${images.elapsedSec || 0}s`;
+
+          syncImageExtraRow.style.display = 'grid';
+          statImgProcessed.textContent = `${images.processed} / ${images.total}`;
+          statImgFilled.textContent = images.filled;
+          statImgSkipped.textContent = images.skipped;
+
+          if (btnStartFillImages) {
+            btnStartFillImages.disabled = true;
+            btnStartFillImages.textContent = '⏳ Đang quét & nạp ảnh...';
+          }
+        } else if (isSyncRunning) {
+          syncProgressCard.style.display = 'block';
+          syncProgressTitle.textContent = `⚡ [Bước ${sync.step}/${sync.totalSteps}] ${sync.stepTitle}`;
+          syncProgressPercent.textContent = `${sync.percent}%`;
+          syncProgressBar.style.width = `${sync.percent}%`;
+          syncProgressDetail.textContent = sync.detail || 'Đang xử lý dữ liệu...';
+          const elapsed = sync.startedAt 
+            ? Math.max(0, Math.round((Date.now() - new Date(sync.startedAt).getTime()) / 1000))
+            : 0;
+          syncProgressElapsed.textContent = `${elapsed}s`;
+          syncImageExtraRow.style.display = 'none';
+        } else {
+          // If neither is running
+          if (btnStartFillImages) {
+            btnStartFillImages.disabled = false;
+            btnStartFillImages.textContent = '🚀 Bắt Đầu Quét & Nạp Ảnh Lên Cloudinary';
+          }
+
+          if (images && images.finishedAt && images.total > 0 && mode === 'images') {
+            syncProgressCard.style.display = 'block';
+            syncProgressTitle.textContent = '✓ Hoàn tất nạp ảnh thật!';
+            syncProgressPercent.textContent = '100%';
+            syncProgressBar.style.width = '100%';
+            syncProgressDetail.textContent = images.message;
+            syncImageExtraRow.style.display = 'grid';
+            statImgProcessed.textContent = `${images.processed} / ${images.total}`;
+            statImgFilled.textContent = images.filled;
+            statImgSkipped.textContent = images.skipped;
+          } else if (sync && sync.finishedAt && sync.percent === 100 && mode === 'sync') {
+            syncProgressCard.style.display = 'block';
+            syncProgressTitle.textContent = '✓ Hoàn tất đồng bộ kho!';
+            syncProgressPercent.textContent = '100%';
+            syncProgressBar.style.width = '100%';
+            syncProgressDetail.textContent = sync.detail;
+          } else if (mode === 'auto') {
+            // In auto mode, if neither was running, hide progress card
+            syncProgressCard.style.display = 'none';
+          }
+
+          if (progressPollingTimer) {
+            clearInterval(progressPollingTimer);
+            progressPollingTimer = null;
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi polling progress:', err);
+      }
+    }
+
+    poll();
+    progressPollingTimer = setInterval(poll, 1000);
   }
 
   function showSyncFeedback(msg, type) {

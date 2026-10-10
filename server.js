@@ -7,6 +7,11 @@ const http = require('http');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const XLSX = require('xlsx');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { PayOS } = require('@payos/node');
+const cloudinary = require('cloudinary').v2;
+const { startFillMissingImages, stopFillMissingImages, getFillProgress } = require('./scripts/fill_missing_images');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +32,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 const DATA_FILE = path.join(__dirname, 'data', 'products.json');
 const CONFIG_FILE = path.join(__dirname, 'data', 'sync-config.json');
 const API_KEYS_FILE = path.join(__dirname, 'data', 'api-keys.json');
+const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+const TRANSACTIONS_FILE = path.join(__dirname, 'data', 'transactions.json');
+const PAYOS_CONFIG_FILE = path.join(__dirname, 'data', 'payos-config.json');
+const JWT_SECRET_FILE = path.join(__dirname, 'data', 'jwt-secret.json');
+const CLOUDINARY_CONFIG_FILE = path.join(__dirname, 'data', 'cloudinary-config.json');
+const VARIANTS_CACHE_FILE = path.join(__dirname, 'data', 'variants_cache.json');
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Rate Limiter 1: Public Web (Người dùng thật & CTV tra cứu trên giao diện)
 // 180 request/phút/IP. Người dùng duyệt web gõ phím bình thường chỉ tốn 5-15 req/phút nên không bao giờ bị nghẽn!
@@ -65,6 +77,19 @@ const commercialRateLimiter = rateLimit({
     success: false,
     code: 'COMMERCIAL_RATE_LIMIT_EXCEEDED',
     message: 'Vượt quá giới hạn tần suất truy vấn thương mại (60 requests/phút). Vui lòng thử lại sau.'
+  }
+});
+
+// Rate Limiter 4: Authentication (Đăng nhập / Đăng ký đối tác chống brute-force SĐT)
+const authRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    code: 'AUTH_RATE_LIMIT_EXCEEDED',
+    message: 'Thao tác xác thực quá nhiều lần. Vui lòng thử lại sau 1 phút.'
   }
 });
 
@@ -133,6 +158,15 @@ function verifyCommercialHmac(req, res, next) {
       success: false,
       code: 'API_KEY_INACTIVE',
       message: 'API Key đang trong trạng thái tạm ngưng hoặc chưa kích hoạt.'
+    });
+  }
+
+  // Kiểm tra thời hạn thuê API (Gói cước 30 ngày)
+  if (client.expiresAt && new Date(client.expiresAt).getTime() < Date.now()) {
+    return res.status(403).json({
+      success: false,
+      code: 'SUBSCRIPTION_EXPIRED',
+      message: 'Gói cước API đã hết hạn. Vui lòng truy cập Cổng Đối Tác (100.000đ / 30 ngày) để gia hạn.'
     });
   }
 
@@ -216,6 +250,12 @@ function getProducts() {
 // Helper: Save products
 function saveProducts(products) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(products, null, 2), 'utf-8');
+  try {
+    const publicDataFile = path.join(__dirname, 'public', 'data', 'products.json');
+    const publicDataDir = path.dirname(publicDataFile);
+    if (!fs.existsSync(publicDataDir)) fs.mkdirSync(publicDataDir, { recursive: true });
+    fs.writeFileSync(publicDataFile, JSON.stringify(products, null, 2), 'utf-8');
+  } catch (e) {}
 }
 
 // Helper: Read config
@@ -368,6 +408,74 @@ app.get('/api/products', webRateLimiter, botDetectionMiddleware, (req, res) => {
   });
 });
 
+// ==========================================
+// CLOUDINARY CONFIG & REVERSE IMAGE PROXY
+// ==========================================
+function getCloudinaryConfig() {
+  try {
+    if (fs.existsSync(CLOUDINARY_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(CLOUDINARY_CONFIG_FILE, 'utf-8'));
+    }
+  } catch (e) {}
+  return null;
+}
+
+let isCloudinaryConfigured = false;
+function initCloudinary() {
+  const cfg = getCloudinaryConfig();
+  if (cfg && cfg.cloudName && cfg.apiKey && cfg.apiSecret) {
+    if (!isCloudinaryConfigured) {
+      cloudinary.config({
+        cloud_name: cfg.cloudName,
+        api_key: cfg.apiKey,
+        api_secret: cfg.apiSecret,
+        secure: true
+      });
+      isCloudinaryConfigured = true;
+    }
+    return cfg;
+  }
+  return null;
+}
+
+// ROUTE: Reverse Image Proxy (Giấu 100% nguồn gốc MISA)
+// URL: /api/images/:filename (VD: /api/images/13948112-0973-4d2d-b792-20a58bbb656f.jpg)
+app.get('/api/images/:filename', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const picId = filename.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+    const cleanPicId = picId.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    // Ưu tiên 1: Chuyển hướng sang Cloudinary CDN với auto WebP & tối ưu hóa tự động
+    const cfg = initCloudinary();
+    if (cfg && cfg.cloudName) {
+      const cloudUrl = `https://res.cloudinary.com/${cfg.cloudName}/image/upload/f_auto,q_auto/cobe-inventory/${cleanPicId}.jpg`;
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.redirect(cloudUrl);
+    }
+
+    // Ưu tiên 2: Phục vụ từ thư mục cache cục bộ nếu có
+    const localCachePath = path.join(__dirname, 'public', 'images', 'products', `${cleanPicId}.jpg`);
+    if (fs.existsSync(localCachePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.sendFile(localCachePath);
+    }
+
+    // Ưu tiên 3: Tải từ MShopKeeper về, lưu cache rồi trả về
+    const mshopUrl = `https://cobedenim.mshopkeeper.vn/backendg2/api/Image?id=${picId}.jpg&type=1&mode=pad&CompanyCode=cobedenim`;
+    const response = await fetch(mshopUrl);
+    if (!response.ok) {
+      return res.status(404).send('Image not found');
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.send(buffer);
+  } catch (err) {
+    res.status(500).send('Image load error');
+  }
+});
+
 // COMMERCIAL API V1: Healthcheck & Ping (Bảo vệ bằng HMAC Chữ ký số)
 app.get('/api/v1/ping', commercialRateLimiter, verifyCommercialHmac, (req, res) => {
   res.json({
@@ -406,6 +514,526 @@ app.get('/api/v1/products', commercialRateLimiter, verifyCommercialHmac, (req, r
     },
     products: pagedProducts
   });
+});
+
+// ==========================================
+// DEVELOPER PORTAL, AUTH (JWT) & PAYOS PAYMENT
+// ==========================================
+
+// Throttle Cache chống lỗi 429 khi tra cứu PayOS API
+const payosApiThrottle = new Map();
+setInterval(() => {
+  const cutoff = Date.now() - 30 * 60 * 1000;
+  for (const [k, t] of payosApiThrottle.entries()) {
+    if (t < cutoff) payosApiThrottle.delete(k);
+  }
+}, 15 * 60 * 1000);
+
+// Helper: Lấy khóa bí mật JWT
+function getJwtSecret() {
+  try {
+    if (fs.existsSync(JWT_SECRET_FILE)) {
+      const data = JSON.parse(fs.readFileSync(JWT_SECRET_FILE, 'utf-8'));
+      if (data.secret) return data.secret;
+    }
+  } catch (e) {}
+  return 'cobe_jwt_super_secure_fallback_secret_key_2026';
+}
+
+// Helper: Đọc cấu hình PayOS
+function getPayosConfig() {
+  try {
+    if (fs.existsSync(PAYOS_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(PAYOS_CONFIG_FILE, 'utf-8'));
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Helper: Khởi tạo client PayOS
+function getPayosClient() {
+  const cfg = getPayosConfig();
+  if (!cfg || !cfg.clientId || !cfg.apiKey || !cfg.checksumKey) return null;
+  try {
+    return new PayOS({
+      clientId: cfg.clientId,
+      apiKey: cfg.apiKey,
+      checksumKey: cfg.checksumKey
+    });
+  } catch (e) {
+    console.error('[PAYOS] Lỗi khởi tạo client:', e.message);
+    return null;
+  }
+}
+
+// Helper: Đọc & ghi danh sách người dùng
+function getUsers() {
+  try {
+    if (!fs.existsSync(USERS_FILE)) return [];
+    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+}
+
+// Helper: Đọc & ghi danh sách giao dịch
+function getTransactions() {
+  try {
+    if (!fs.existsSync(TRANSACTIONS_FILE)) return [];
+    return JSON.parse(fs.readFileSync(TRANSACTIONS_FILE, 'utf-8'));
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveTransactions(txs) {
+  fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(txs, null, 2), 'utf-8');
+}
+
+// Helper: Ẩn passwordHash khi trả về client
+function sanitizeUser(u) {
+  if (!u) return null;
+  const { passwordHash, ...safe } = u;
+  return safe;
+}
+
+// Helper: Đồng bộ thông tin user vào data/api-keys.json để phục vụ HMAC Commercial API
+function syncUserToApiKeys(user) {
+  try {
+    const keys = getApiKeys();
+    const idx = keys.findIndex(k => k.id === user.id || k.apiKey === user.apiKey);
+    const keyObj = {
+      id: user.id,
+      name: user.name || user.phone,
+      apiKey: user.apiKey,
+      apiSecret: user.apiSecret,
+      status: user.status || 'inactive',
+      expiresAt: user.subscriptionExpiresAt || null,
+      plan: user.plan || 'standard_30d',
+      phone: user.phone,
+      createdAt: user.createdAt || new Date().toISOString()
+    };
+    if (idx >= 0) {
+      keys[idx] = { ...keys[idx], ...keyObj };
+    } else {
+      keys.push(keyObj);
+    }
+    fs.writeFileSync(API_KEYS_FILE, JSON.stringify(keys, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Lỗi syncUserToApiKeys:', err);
+  }
+}
+
+// Helper: Kích hoạt / gia hạn gói cước 30 ngày cho User
+function activateUserSubscription(userId, daysToAdd = 30) {
+  const users = getUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user) return null;
+
+  const now = Date.now();
+  const currentExp = user.subscriptionExpiresAt ? new Date(user.subscriptionExpiresAt).getTime() : 0;
+  // Nếu gói còn hạn: cộng dồn từ ngày hết hạn cũ. Nếu đã hết hạn hoặc mới: cộng từ bây giờ.
+  const baseTime = currentExp > now ? currentExp : now;
+  const newExp = new Date(baseTime + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
+
+  user.subscriptionExpiresAt = newExp;
+  user.status = 'active';
+  user.plan = 'standard_30d';
+  saveUsers(users);
+  syncUserToApiKeys(user);
+  return { user, newExp };
+}
+
+// Middleware: Xác thực JWT Bearer Token chặt chẽ
+function authenticateJwt(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      success: false,
+      code: 'AUTH_TOKEN_MISSING',
+      message: 'Thiếu mã xác thực phiên đăng nhập (JWT Bearer Token).'
+    });
+  }
+
+  const token = authHeader.substring(7).trim();
+  try {
+    const decoded = jwt.verify(token, getJwtSecret());
+    const users = getUsers();
+    const user = users.find(u => u.id === decoded.userId);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        code: 'USER_NOT_FOUND',
+        message: 'Tài khoản không tồn tại trên hệ thống.'
+      });
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(401).json({
+      success: false,
+      code: 'INVALID_TOKEN',
+      message: 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.'
+    });
+  }
+}
+
+// ROUTE: Đăng ký tài khoản bằng SĐT + Mật khẩu
+app.post('/api/auth/register', authRateLimiter, async (req, res) => {
+  try {
+    const { phone, password, name } = req.body;
+    if (!phone || !password) {
+      return res.status(400).json({
+        success: false,
+        code: 'MISSING_FIELDS',
+        message: 'Vui lòng cung cấp số điện thoại và mật khẩu.'
+      });
+    }
+
+    // Chuẩn hóa & kiểm tra định dạng SĐT Việt Nam (10 số, đầu 03, 05, 07, 08, 09)
+    const phoneClean = String(phone).trim().replace(/\s+/g, '');
+    const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
+    if (!phoneRegex.test(phoneClean)) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_PHONE',
+        message: 'Số điện thoại không đúng định dạng VN (10 chữ số, ví dụ 0987654321).'
+      });
+    }
+
+    if (String(password).length < 6) {
+      return res.status(400).json({
+        success: false,
+        code: 'WEAK_PASSWORD',
+        message: 'Mật khẩu phải có tối thiểu 6 ký tự.'
+      });
+    }
+
+    const users = getUsers();
+    if (users.some(u => u.phone === phoneClean)) {
+      return res.status(409).json({
+        success: false,
+        code: 'PHONE_EXISTS',
+        message: 'Số điện thoại này đã được đăng ký. Vui lòng đăng nhập.'
+      });
+    }
+
+    // Băm mật khẩu an toàn với bcrypt (salt rounds = 10)
+    const passwordHash = await bcrypt.hash(password, 10);
+    const userId = 'usr_' + Date.now().toString(36) + '_' + crypto.randomBytes(3).toString('hex');
+    const apiKey = 'cobe_pk_live_' + crypto.randomBytes(16).toString('hex');
+    const apiSecret = 'cobe_sk_live_' + crypto.randomBytes(24).toString('hex');
+
+    const newUser = {
+      id: userId,
+      phone: phoneClean,
+      name: (name || '').trim() || `Đối tác ${phoneClean.slice(-4)}`,
+      passwordHash,
+      apiKey,
+      apiSecret,
+      status: 'inactive', // Chờ nạp tiền kích hoạt
+      plan: 'standard_30d',
+      subscriptionExpiresAt: null,
+      createdAt: new Date().toISOString()
+    };
+
+    users.push(newUser);
+    saveUsers(users);
+    syncUserToApiKeys(newUser);
+
+    // Ký cấp JWT token (thời hạn 7 ngày)
+    const token = jwt.sign(
+      { userId: newUser.id, phone: newUser.phone, role: 'partner' },
+      getJwtSecret(),
+      { expiresIn: '7d' }
+    );
+
+    return res.json({
+      success: true,
+      message: 'Đăng ký tài khoản đối tác thành công!',
+      token,
+      user: {
+        ...sanitizeUser(newUser),
+        daysRemaining: 0,
+        isActive: false
+      }
+    });
+  } catch (err) {
+    console.error('Lỗi đăng ký:', err);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi đăng ký tài khoản.' });
+  }
+});
+
+// ROUTE: Đăng nhập bằng SĐT + Mật khẩu
+app.post('/api/auth/login', authRateLimiter, async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    if (!phone || !password) {
+      return res.status(400).json({
+        success: false,
+        code: 'MISSING_FIELDS',
+        message: 'Vui lòng cung cấp số điện thoại và mật khẩu.'
+      });
+    }
+
+    const phoneClean = String(phone).trim().replace(/\s+/g, '');
+    const users = getUsers();
+    const user = users.find(u => u.phone === phoneClean);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        code: 'INVALID_CREDENTIALS',
+        message: 'Số điện thoại hoặc mật khẩu không chính xác.'
+      });
+    }
+
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
+      return res.status(401).json({
+        success: false,
+        code: 'INVALID_CREDENTIALS',
+        message: 'Số điện thoại hoặc mật khẩu không chính xác.'
+      });
+    }
+
+    // Ký cấp JWT token
+    const token = jwt.sign(
+      { userId: user.id, phone: user.phone, role: 'partner' },
+      getJwtSecret(),
+      { expiresIn: '7d' }
+    );
+
+    let daysRemaining = 0;
+    if (user.subscriptionExpiresAt) {
+      const diff = new Date(user.subscriptionExpiresAt).getTime() - Date.now();
+      daysRemaining = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+    }
+    const isActive = user.status === 'active' && daysRemaining > 0;
+
+    return res.json({
+      success: true,
+      message: 'Đăng nhập thành công!',
+      token,
+      user: {
+        ...sanitizeUser(user),
+        daysRemaining,
+        isActive
+      }
+    });
+  } catch (err) {
+    console.error('Lỗi đăng nhập:', err);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi đăng nhập.' });
+  }
+});
+
+// ROUTE: Lấy thông tin tài khoản hiện tại
+app.get('/api/auth/me', authenticateJwt, (req, res) => {
+  const users = getUsers();
+  const user = users.find(u => u.id === req.user.id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+  }
+
+  let daysRemaining = 0;
+  if (user.subscriptionExpiresAt) {
+    const diff = new Date(user.subscriptionExpiresAt).getTime() - Date.now();
+    daysRemaining = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+  }
+  const isActive = user.status === 'active' && daysRemaining > 0;
+
+  res.json({
+    success: true,
+    user: {
+      ...sanitizeUser(user),
+      daysRemaining,
+      isActive
+    }
+  });
+});
+
+// ROUTE: Tạo link thanh toán PayOS (100.000 VNĐ / 30 ngày)
+app.post('/api/payment/create-payment-link', authenticateJwt, async (req, res) => {
+  try {
+    const payos = getPayosClient();
+    const payosCfg = getPayosConfig();
+    if (!payos || !payosCfg) {
+      return res.status(500).json({
+        success: false,
+        code: 'PAYOS_NOT_CONFIGURED',
+        message: 'Cổng thanh toán PayOS chưa được kích hoạt cấu hình.'
+      });
+    }
+
+    const price = Number(payosCfg.price) || 100000;
+    // PayOS orderCode là số nguyên dương duy nhất
+    const orderCode = Number(String(Date.now()).slice(-7) + Math.floor(Math.random() * 89 + 10));
+
+    // Description tối đa 25 ký tự không dấu
+    const userPhone = req.user.phone || '';
+    const description = `COBE ${userPhone.slice(-6)}`.substring(0, 25);
+
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const host = req.get('host') || 'localhost:3000';
+    const returnUrl = `${protocol}://${host}/developer.html?payment=success&orderCode=${orderCode}`;
+    const cancelUrl = `${protocol}://${host}/developer.html?payment=cancel&orderCode=${orderCode}`;
+
+    const paymentLink = await payos.paymentRequests.create({
+      orderCode,
+      amount: price,
+      description,
+      returnUrl,
+      cancelUrl
+    });
+
+    const txs = getTransactions();
+    txs.push({
+      orderCode,
+      userId: req.user.id,
+      phone: req.user.phone,
+      amount: price,
+      status: 'PENDING',
+      paymentLinkId: paymentLink.paymentLinkId || '',
+      checkoutUrl: paymentLink.checkoutUrl || '',
+      qrCode: paymentLink.qrCode || '',
+      createdAt: new Date().toISOString()
+    });
+    saveTransactions(txs);
+
+    res.json({
+      success: true,
+      orderCode,
+      amount: price,
+      description,
+      checkoutUrl: paymentLink.checkoutUrl,
+      qrCode: paymentLink.qrCode
+    });
+  } catch (err) {
+    console.error('Lỗi create-payment-link:', err);
+    res.status(500).json({
+      success: false,
+      code: 'PAYMENT_LINK_FAILED',
+      message: `Lỗi khi tạo liên kết thanh toán PayOS: ${err.message}`
+    });
+  }
+});
+
+// ROUTE: Kiểm tra trạng thái đơn hàng (Hỗ trợ polling kiểm tra & kích hoạt tự động)
+app.get('/api/payment/check-order/:orderCode', authenticateJwt, async (req, res) => {
+  try {
+    const orderCode = req.params.orderCode;
+    const txs = getTransactions();
+    const tx = txs.find(t => String(t.orderCode) === String(orderCode));
+    if (!tx) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch' });
+    }
+
+    if (tx.userId !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem đơn hàng này' });
+    }
+
+    // Nếu đã đánh dấu PAID trong database nội bộ (được Webhook kích hoạt tức thì)
+    if (tx.status === 'PAID') {
+      const refreshedUser = getUsers().find(u => u.id === req.user.id);
+      return res.json({
+        success: true,
+        paid: true,
+        status: 'PAID',
+        user: sanitizeUser(refreshedUser)
+      });
+    }
+
+    // Nếu vẫn PENDING, chỉ tra cứu PayOS API nếu:
+    // 1. Khách chủ động bấm "Kiểm tra ngay" (query ?force=true)
+    // 2. HOẶC lần gọi PayOS API gần nhất cách đây hơn 10 giây (Throttle chống lỗi 429 Too Many Requests)
+    const isForce = req.query.force === 'true';
+    const lastCheckTime = payosApiThrottle.get(orderCode) || 0;
+    const now = Date.now();
+    const shouldQueryPayos = isForce || (now - lastCheckTime > 10000);
+
+    const payos = getPayosClient();
+    if (payos && shouldQueryPayos) {
+      payosApiThrottle.set(orderCode, now);
+      try {
+        const paymentInfo = await payos.paymentRequests.get(orderCode);
+        if (paymentInfo && (paymentInfo.status === 'PAID' || paymentInfo.status === 'COMPLETED')) {
+          tx.status = 'PAID';
+          tx.paidAt = new Date().toISOString();
+          saveTransactions(txs);
+          const result = activateUserSubscription(tx.userId, 30);
+          console.log(`[PAYOS-CHECK] ✓ Đã kích hoạt 30 ngày cho user ${tx.userId} qua PayOS query (Order: ${orderCode})`);
+          return res.json({
+            success: true,
+            paid: true,
+            status: 'PAID',
+            user: sanitizeUser(result ? result.user : req.user)
+          });
+        }
+      } catch (checkErr) {
+        // Phòng vệ nếu PayOS báo lỗi 429 rate limit thì chỉ log warning, không làm sập luồng
+        if (checkErr.status === 429 || (checkErr.message && checkErr.message.includes('429'))) {
+          console.warn(`[PAYOS-CHECK] Đạt ngưỡng giới hạn PayOS API (429) cho đơn #${orderCode}. Chờ webhook tự động xử lý.`);
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      paid: false,
+      status: tx.status
+    });
+  } catch (err) {
+    console.error('Lỗi check-order:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ROUTE: Webhook nhận thông báo từ PayOS khi khách chuyển khoản thành công
+app.post('/api/payment/payos-webhook', async (req, res) => {
+  try {
+    const payos = getPayosClient();
+    let webhookData = req.body.data || req.body;
+
+    if (payos) {
+      try {
+        webhookData = await payos.webhooks.verify(req.body);
+      } catch (verifyErr) {
+        console.warn('[PAYOS-WEBHOOK] Chữ ký webhook không hợp lệ:', verifyErr.message);
+        return res.status(400).json({ success: false, message: 'Chữ ký webhook PayOS không hợp lệ' });
+      }
+    }
+
+    const orderCode = webhookData.orderCode;
+    if (!orderCode) {
+      return res.status(400).json({ success: false, message: 'Thiếu orderCode' });
+    }
+
+    const txs = getTransactions();
+    const tx = txs.find(t => String(t.orderCode) === String(orderCode));
+    if (tx) {
+      if (tx.status !== 'PAID') {
+        tx.status = 'PAID';
+        tx.paidAt = new Date().toISOString();
+        tx.webhookReceivedAt = new Date().toISOString();
+        saveTransactions(txs);
+        activateUserSubscription(tx.userId, 30);
+        console.log(`[PAYOS-WEBHOOK] ✓ Đã kích hoạt 30 ngày cho user ${tx.userId} (Order: ${orderCode})`);
+      }
+    }
+
+    return res.json({ success: true, message: 'Webhook đã được ghi nhận' });
+  } catch (err) {
+    console.error('[PAYOS-WEBHOOK] Lỗi xử lý:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Giao diện Developer Portal URL đẹp
+app.get('/developer', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'developer.html'));
 });
 
 // API: Get category tree
@@ -818,6 +1446,25 @@ function getCategoryPlaceholder(catName, itemName) {
   return 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80';
 }
 
+// State tracking real-time MShopKeeper Sync Progress
+let mshopSyncProgress = {
+  running: false,
+  step: 0,
+  totalSteps: 4,
+  stepTitle: 'Sẵn sàng',
+  percent: 0,
+  detail: '',
+  itemsProcessed: 0,
+  totalItems: 0,
+  startedAt: null,
+  finishedAt: null,
+  error: null
+};
+
+function getMshopSyncProgress() {
+  return { ...mshopSyncProgress };
+}
+
 // Core helper: Perform sync from MShopKeeper API using verified InventoryItem and instocks endpoints
 async function performSyncFromMShopKeeper(token, branchId) {
   const config = getConfig();
@@ -830,6 +1477,20 @@ async function performSyncFromMShopKeeper(token, branchId) {
       message: 'Cần có Access Token của MShopKeeper để đồng bộ.'
     };
   }
+
+  mshopSyncProgress = {
+    running: true,
+    step: 1,
+    totalSteps: 4,
+    stepTitle: 'Kết nối MShopKeeper & tải cây danh mục',
+    percent: 10,
+    detail: 'Đang kết nối API MShopKeeper...',
+    itemsProcessed: 0,
+    totalItems: 0,
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    error: null
+  };
 
   const reqHeaders = {
     'accept': 'application/json',
@@ -882,12 +1543,17 @@ async function performSyncFromMShopKeeper(token, branchId) {
 
     // 1. Fetch Master InventoryItem catalog for PictureID and real UnitPrice
     console.log(`[SYNC] Lấy danh mục sản phẩm gốc & ảnh từ MShopKeeper...`);
+    mshopSyncProgress.percent = 20;
+    mshopSyncProgress.detail = 'Đang tải danh sách sản phẩm gốc và mã hình ảnh...';
     const invUrl = `https://cobedenim.mshopkeeper.vn/backendg2/api/InventoryItem?_dc=${Date.now()}&inventoryItemCategoryID=00000000-0000-0000-0000-000000000000&branchID=${targetBranchId}&isOutStock=0&page=1&start=0&limit=1000`;
     
     let masterItems = [];
     try {
       const invRes = await fetch(invUrl, { method: 'GET', headers: reqHeaders });
       if (invRes.status === 401) {
+        mshopSyncProgress.running = false;
+        mshopSyncProgress.error = 'Token đã hết hạn';
+        mshopSyncProgress.detail = 'Phiên đăng nhập đã hết hạn. Vui lòng mở tab cobedenim.mshopkeeper.vn để làm mới token.';
         return {
           success: false,
           expired: true,
@@ -903,6 +1569,10 @@ async function performSyncFromMShopKeeper(token, branchId) {
       console.warn(`[SYNC] Không thể tải danh mục InventoryItem: ${e.message}`);
     }
 
+    mshopSyncProgress.totalItems = masterItems.length;
+    mshopSyncProgress.percent = 30;
+    mshopSyncProgress.detail = `Đã tìm thấy ${masterItems.length} mẫu sản phẩm gốc từ MShopKeeper.`;
+
     // Build master lookup maps by SKU and Name
     const masterBySku = new Map();
     const masterByName = new Map();
@@ -912,6 +1582,11 @@ async function performSyncFromMShopKeeper(token, branchId) {
     }
 
     // 2. Fetch current instocks for today's real-time inventory
+    mshopSyncProgress.step = 2;
+    mshopSyncProgress.stepTitle = 'Đang tải tồn kho tổng thể';
+    mshopSyncProgress.percent = 35;
+    mshopSyncProgress.detail = 'Đang truy vấn số lượng tồn kho theo thời gian thực...';
+
     const today = new Date().toISOString().split('T')[0];
     const stockUrl = `https://cobedenim.mshopkeeper.vn/backendg2/api/instocks?_dc=${Date.now()}&fromDate=${today}T00:00:00&toDate=${today}T23:59:59&branchID=${targetBranchId}&stockID=00000000-0000-0000-0000-000000000000&inventoryItemCategoryID=00000000-0000-0000-0000-000000000000&inventoryItem=&showOrderedQuantity=false&UnitID=00000000-0000-0000-0000-000000000000&instockType=0&instockStatusID=0&trancationStatusID=0&quantityStatusID=0&BrandID=00000000-0000-0000-0000-000000000000&page=1&start=0&limit=1000`;
 
@@ -922,6 +1597,8 @@ async function performSyncFromMShopKeeper(token, branchId) {
     });
 
     if (stockResponse.status === 401) {
+      mshopSyncProgress.running = false;
+      mshopSyncProgress.error = 'Token đã hết hạn';
       return {
         success: false,
         expired: true,
@@ -930,6 +1607,8 @@ async function performSyncFromMShopKeeper(token, branchId) {
     }
 
     if (!stockResponse.ok) {
+      mshopSyncProgress.running = false;
+      mshopSyncProgress.error = `HTTP ${stockResponse.status}`;
       return {
         success: false,
         message: `MShopKeeper trả về lỗi HTTP ${stockResponse.status}: ${stockResponse.statusText}`
@@ -940,6 +1619,8 @@ async function performSyncFromMShopKeeper(token, branchId) {
     const rawItems = data.Data || [];
 
     if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      mshopSyncProgress.running = false;
+      mshopSyncProgress.error = 'Không có dữ liệu';
       return {
         success: false,
         message: 'Không tìm thấy dữ liệu hàng hóa nào trong kho MShopKeeper.'
@@ -947,33 +1628,77 @@ async function performSyncFromMShopKeeper(token, branchId) {
     }
 
     // 3. Fetch full child variants via ByParentID to get distinct colors, photos, and prices
+    mshopSyncProgress.step = 3;
+    mshopSyncProgress.stepTitle = 'Đang nạp chi tiết màu sắc, hình ảnh & giá';
+    mshopSyncProgress.percent = 40;
+    mshopSyncProgress.detail = `Đang tải chi tiết biến thể màu và ảnh cho ${masterItems.length} sản phẩm...`;
+
     console.log(`[SYNC] Lấy chi tiết phân loại màu, ảnh và giá từng màu (ByParentID)...`);
     const childrenCache = new Map();
-    const BATCH_SIZE = 25;
-    for (let i = 0; i < masterItems.length; i += BATCH_SIZE) {
-      const batch = masterItems.slice(i, i + BATCH_SIZE);
+
+    // TỐI ƯU 1: Đọc từ cache variants cục bộ để tránh nã hàng trăm request vào MShopKeeper
+    if (fs.existsSync(VARIANTS_CACHE_FILE)) {
+      try {
+        const cachedData = JSON.parse(fs.readFileSync(VARIANTS_CACHE_FILE, 'utf-8'));
+        for (const [k, v] of Object.entries(cachedData)) {
+          childrenCache.set(k, v);
+        }
+        console.log(`[SYNC] -> Đã tận dụng ${childrenCache.size} mẫu từ cache biến thể màu/ảnh sẵn có.`);
+      } catch (e) {}
+    }
+
+    // Chỉ gọi ByParentID cho những mẫu thực sự mới / chưa có trong cache
+    const itemsNeedFetch = masterItems.filter(m => !childrenCache.has(m.InventoryItemID));
+    console.log(`[SYNC] -> Số mẫu mới cần truy vấn MShopKeeper: ${itemsNeedFetch.length}/${masterItems.length}.`);
+
+    const BATCH_SIZE_VARIANTS = 8; // Giảm từ 25 xuống 8 để bảo vệ kết nối MISA
+    for (let i = 0; i < itemsNeedFetch.length; i += BATCH_SIZE_VARIANTS) {
+      const batch = itemsNeedFetch.slice(i, i + BATCH_SIZE_VARIANTS);
       await Promise.all(batch.map(async (m) => {
         try {
           const u = `https://cobedenim.mshopkeeper.vn/backendg2/api/InventoryItem/ByParentID?parentId=${m.InventoryItemID}&page=1&start=0&limit=100`;
-          const r = await fetch(u, { headers: reqHeaders });
+          const r = await fetch(u, { headers: reqHeaders, signal: AbortSignal.timeout(8000) });
           const d = await r.json();
           if (d.Data && d.Data.length > 0) {
             childrenCache.set(m.InventoryItemID, d.Data);
           }
         } catch (e) {}
       }));
+
+      const processed = Math.min(i + batch.length, itemsNeedFetch.length);
+      mshopSyncProgress.itemsProcessed = processed;
+      mshopSyncProgress.percent = 40 + Math.round((processed / (itemsNeedFetch.length || 1)) * 30);
+      mshopSyncProgress.detail = `Đang tải mẫu mới: ${processed}/${itemsNeedFetch.length} (${mshopSyncProgress.percent}%)`;
+
+      // Khoảng nghỉ nhẹ 350ms giữa các đợt để bảo vệ server MISA
+      if (i + BATCH_SIZE_VARIANTS < itemsNeedFetch.length) {
+        await sleep(350);
+      }
     }
+
+    // Lưu lại cache biến thể để các lần sau hoàn toàn 0 tốn request
+    try {
+      const cacheObj = Object.fromEntries(childrenCache);
+      fs.writeFileSync(VARIANTS_CACHE_FILE, JSON.stringify(cacheObj, null, 2), 'utf-8');
+    } catch (e) {}
+
     console.log(`[SYNC] -> Đã lấy chi tiết biến thể của ${childrenCache.size} sản phẩm.`);
 
     // 4. Fetch exact real-time variant stocks from instocks/detail API
+    mshopSyncProgress.step = 4;
+    mshopSyncProgress.stepTitle = 'Đang nạp tồn kho chính xác từng size/màu';
+    mshopSyncProgress.percent = 70;
+    mshopSyncProgress.detail = 'Đang tải số lượng tồn kho từng size/màu chi tiết...';
+
     console.log(`[SYNC] Lấy số lượng tồn kho chính xác từng size/màu (instocks/detail)...`);
     const stockDetailMap = new Map();
-    for (let i = 0; i < masterItems.length; i += BATCH_SIZE) {
-      const batch = masterItems.slice(i, i + BATCH_SIZE);
+    const BATCH_SIZE_STOCKS = 8; // Giảm từ 25 xuống 8 để không gây nghẽn kết nối MISA
+    for (let i = 0; i < masterItems.length; i += BATCH_SIZE_STOCKS) {
+      const batch = masterItems.slice(i, i + BATCH_SIZE_STOCKS);
       await Promise.all(batch.map(async (m) => {
         try {
           const u = `https://cobedenim.mshopkeeper.vn/backendg2/api/instocks/detail?_dc=${Date.now()}&fromDate=${today}T00:00:00&toDate=${today}T23:59:59&branchID=&stockID=7fba5f82-0e11-4694-8056-23eb6cf34dce&inventoryItemID=${m.InventoryItemID}&showOrderedQuantity=false&UnitID=${m.UnitID || '746ec67b-d56b-4df7-8187-2fb7fcf31216'}&lotID=&expiryDate=&isShowAllDetail=true`;
-          const r = await fetch(u, { headers: reqHeaders });
+          const r = await fetch(u, { headers: reqHeaders, signal: AbortSignal.timeout(8000) });
           const d = await r.json();
           (d.Data || []).forEach(it => {
             if (it.SKUCode) {
@@ -982,6 +1707,15 @@ async function performSyncFromMShopKeeper(token, branchId) {
           });
         } catch (e) {}
       }));
+
+      const processed = Math.min(i + batch.length, masterItems.length);
+      mshopSyncProgress.percent = 70 + Math.round((processed / masterItems.length) * 25); // 70% -> 95%
+      mshopSyncProgress.detail = `Đang nạp tồn kho chi tiết: ${processed}/${masterItems.length} sản phẩm (${mshopSyncProgress.percent}%)`;
+
+      // Khoảng nghỉ 300ms giữa các đợt để server MISA kịp nhả kết nối
+      if (i + BATCH_SIZE_STOCKS < masterItems.length) {
+        await sleep(300);
+      }
     }
     console.log(`[SYNC] -> Đã lấy tồn kho thực tế của ${stockDetailMap.size} biến thể size/màu.`);
 
@@ -1049,7 +1783,7 @@ async function performSyncFromMShopKeeper(token, branchId) {
               : 350000;
 
           const imgUrl = picId
-            ? `https://cobedenim.mshopkeeper.vn/backendg2/api/Image?id=${picId}${cleanExt}&type=1&mode=pad&CompanyCode=cobedenim`
+            ? `/api/images/${picId}.jpg`
             : getCategoryPlaceholder(cat, master.InventoryItemName);
 
           const displayName = totalColors > 1 && colorName !== 'Tiêu chuẩn'
@@ -1107,7 +1841,7 @@ async function performSyncFromMShopKeeper(token, branchId) {
 
         const retailPrice = Number(master.UnitPrice) > 0 ? Number(master.UnitPrice) : 350000;
         const imgUrl = picId
-          ? `https://cobedenim.mshopkeeper.vn/backendg2/api/Image?id=${picId}${cleanExt}&type=1&mode=pad&CompanyCode=cobedenim`
+          ? `/api/images/${picId}.jpg`
           : getCategoryPlaceholder(cat, master.InventoryItemName);
 
         const sizes = master.Size ? master.Size.split(',').map(x => x.trim().toUpperCase()) : ['FREESIZE'];
@@ -1149,6 +1883,12 @@ async function performSyncFromMShopKeeper(token, branchId) {
 
     console.log(`[SYNC] Hoàn tất: ${expandedProducts.length} phân loại màu, ${picCount} mẫu có ảnh thật.`);
 
+    mshopSyncProgress.running = false;
+    mshopSyncProgress.percent = 100;
+    mshopSyncProgress.stepTitle = 'Hoàn tất đồng bộ';
+    mshopSyncProgress.detail = `Đã đồng bộ thành công ${expandedProducts.length} mẫu theo từng màu với ${picCount} ảnh thật!`;
+    mshopSyncProgress.finishedAt = new Date().toISOString();
+
     return {
       success: true,
       message: `Đồng bộ trực tiếp thành công ${expandedProducts.length} mẫu theo từng màu và giá từ MShopKeeper với ${picCount} ảnh thật!`,
@@ -1159,12 +1899,40 @@ async function performSyncFromMShopKeeper(token, branchId) {
 
   } catch (err) {
     console.error('Sync error:', err);
+    mshopSyncProgress.running = false;
+    mshopSyncProgress.error = err.message;
+    mshopSyncProgress.detail = `Lỗi kết nối MShopKeeper: ${err.message}`;
     return {
       success: false,
       message: `Lỗi kết nối MShopKeeper: ${err.message}`
     };
   }
 }
+
+// API: Get Real-time Progress (Both MShopKeeper inventory sync & Cloudinary image fill)
+app.get('/api/sync/progress', (req, res) => {
+  res.json({
+    success: true,
+    sync: getMshopSyncProgress(),
+    images: getFillProgress()
+  });
+});
+
+// API: Trigger Background Image Fill to Cloudinary
+app.post('/api/sync/fill-images', adminRateLimiter, async (req, res) => {
+  try {
+    const result = await startFillMissingImages();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// API: Cancel Background Image Fill
+app.post('/api/sync/fill-images/cancel', adminRateLimiter, (req, res) => {
+  const result = stopFillMissingImages();
+  res.json(result);
+});
 
 // API: Trigger MShopKeeper Live Sync
 app.post('/api/sync/mshopkeeper', adminRateLimiter, async (req, res) => {
@@ -1272,14 +2040,30 @@ function startAutoSyncScheduler() {
     }
   }
 
-  // Khởi động chạy lần đầu sau 10 giây
+  // Khởi động chạy lần đầu sau 15 giây (bỏ qua nếu vừa đồng bộ trong vòng 30 phút để bảo vệ MISA)
   setTimeout(() => {
+    const cfg = getConfig();
+    const lastSyncMs = cfg.lastSyncTime ? new Date(cfg.lastSyncTime).getTime() : 0;
+    const diffMins = (Date.now() - lastSyncMs) / (60 * 1000);
+    if (diffMins < 30) {
+      console.log(`[AUTO-SYNC] Lần đồng bộ gần nhất cách đây ${Math.round(diffMins)} phút. Bỏ qua chạy ngay khi khởi động để tránh quá tải MISA.`);
+      return;
+    }
     runAutoSync();
-  }, 10000);
+  }, 15000);
 
   // Lặp lại mỗi 2 tiếng
   setInterval(runAutoSync, intervalMs);
 }
+
+// Route alias for Swagger Docs & Developer Portal
+app.get(['/swagger', '/docs', '/api-docs'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'swagger.html'));
+});
+
+app.get('/developer', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'developer.html'));
+});
 
 // Fallback to index.html for SPA routing
 app.use((req, res) => {

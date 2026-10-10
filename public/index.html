@@ -38,6 +38,15 @@
           </svg>
         </button>
 
+        <!-- Cổng API Đối Tác (100k/30 ngày) -->
+        <a href="/developer" class="action-btn" title="Cổng kết nối API Đối Tác (100k/30 ngày)" style="text-decoration: none; color: inherit;">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          <span class="btn-label">API Đối Tác</span>
+        </a>
+
         <!-- MShopKeeper Sync Trigger -->
         <button id="btnOpenSync" class="action-btn sync-btn" title="Quản lý đồng bộ MShopKeeper">
           <svg class="svg-icon icon-spin-hover" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
@@ -288,10 +297,50 @@
           </div>
         </div>
 
+        <!-- Universal Live Progress Tracker -->
+        <div id="syncProgressCard" class="sync-progress-card" style="display: none;">
+          <div class="progress-header">
+            <div class="progress-title-wrap">
+              <span class="progress-dot-pulse"></span>
+              <span id="syncProgressTitle" class="progress-title-text">Đang đồng bộ...</span>
+            </div>
+            <span id="syncProgressPercent" class="progress-percent-badge">0%</span>
+          </div>
+
+          <div class="progress-bar-track">
+            <div id="syncProgressBar" class="progress-bar-fill" style="width: 0%;">
+              <div class="progress-bar-glow"></div>
+            </div>
+          </div>
+
+          <div class="progress-meta-row">
+            <span id="syncProgressDetail" class="progress-detail-text">Đang chuẩn bị...</span>
+            <span id="syncProgressElapsed" class="progress-elapsed-badge">0s</span>
+          </div>
+
+          <!-- Extra Image Stats (Quét & nạp ảnh) -->
+          <div id="syncImageExtraRow" class="progress-extra-stats" style="display: none;">
+            <div class="extra-stat-item">
+              <span class="stat-lbl">Đã quét:</span>
+              <strong id="statImgProcessed">0 / 0</strong>
+            </div>
+            <div class="extra-stat-item">
+              <span class="stat-lbl">Nạp ảnh thật:</span>
+              <strong id="statImgFilled" style="color: #10b981;">0</strong>
+            </div>
+            <div class="extra-stat-item">
+              <span class="stat-lbl">Bỏ qua:</span>
+              <strong id="statImgSkipped" style="color: #94a3b8;">0</strong>
+            </div>
+            <button id="btnCancelFillImages" class="btn-cancel-mini" title="Dừng quét ảnh">⏹️ Dừng</button>
+          </div>
+        </div>
+
         <div class="tabs-nav">
           <button class="nav-tab active" data-tab="direct-sync">1. Tự Động / API</button>
           <button class="nav-tab" data-tab="bookmarklet-sync">2. Lấy Token 1-Click</button>
           <button class="nav-tab" data-tab="excel-sync">3. Nạp File Excel MISA</button>
+          <button class="nav-tab" data-tab="images-sync">4. Đồng Bộ Ảnh Thật</button>
         </div>
 
         <!-- Tab 1: Direct / Auto Detect -->
@@ -360,6 +409,23 @@
           </div>
           <button id="btnImportJson" class="btn-primary-block" style="margin-top: 0.5rem;">
             📥 Cập Nhật Bằng Dữ Liệu Này
+          </button>
+        </div>
+
+        <!-- Tab 4: Cloudinary Real Image Fill -->
+        <div class="tab-pane" id="tab-images-sync">
+          <p class="pane-text">Quét và nạp ảnh sản phẩm độ phân giải cao từ MShopKeeper lên CDN Cloudinary:</p>
+          <div style="background: var(--bg-inset); border: 1px solid var(--border-hairline); border-radius: var(--radius-sm); padding: 0.85rem; margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.8rem; color: var(--text-secondary);">Trạng thái CDN Cloudinary:</span>
+              <span class="status-badge live" style="font-size: 0.75rem;">● Đã kích hoạt</span>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-tertiary); line-height: 1.5;">
+              Hệ thống tự động phát hiện định dạng ảnh thật (thử cả .png và .jpg) từ máy chủ MShopKeeper, bỏ qua ảnh túi xách mặc định và nạp thẳng lên Cloudinary với tối ưu hóa WebP tự động.
+            </div>
+          </div>
+          <button id="btnStartFillImages" class="btn-primary-block" style="background: linear-gradient(135deg, #3b82f6, #2563eb); margin-top: 0.5rem;">
+            🚀 Bắt Đầu Quét & Nạp Ảnh Lên Cloudinary
           </button>
         </div>
 

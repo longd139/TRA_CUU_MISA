@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="denim">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Tra Cứu Tồn Kho — Cobe Denim Swagger Explorer</title>
+  <meta name="description" content="Tài liệu & Thử nghiệm API thương mại tra cứu tồn kho MShopKeeper Cobe Denim với chữ ký số HMAC-SHA256">
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Swagger UI Official CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui.css">
+
+  <!-- Crypto-JS for Seamless Client-Side HMAC-SHA256 Auto-Signature -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+
+  <style>
+    :root {
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --bg-base: #06080d;
+      --bg-surface: #0b0f19;
+      --bg-card: #0f1422;
+      --bg-card-inner: #141b2d;
+
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(56, 189, 248, 0.25);
+
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --accent-cyan: #38bdf8;
+      --accent-blue: #2563eb;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.5;
+      background-image: 
+        radial-gradient(ellipse 60% 50% at 50% -10%, rgba(37, 99, 235, 0.15), transparent 70%),
+        radial-gradient(circle at 10% 40%, rgba(56, 189, 248, 0.04), transparent 40%),
+        radial-gradient(circle at 90% 70%, rgba(139, 92, 246, 0.04), transparent 40%);
+      background-attachment: fixed;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Top Navigation */
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      background: rgba(11, 15, 25, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .brand-logo-pill {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb, #38bdf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    }
+
+    .brand-meta h1 {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #fff;
+    }
+
+    .brand-meta span {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      letter-spacing: 1px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .nav-btn.primary {
+      background: linear-gradient(135deg, #2563eb, #38bdf8);
+      border: none;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    }
+
+    /* Sub-header banner */
+    .docs-banner {
+      position: relative;
+      z-index: 2;
+      max-width: 1200px;
+      margin: 24px auto 0;
+      padding: 0 20px;
+    }
+
+    .banner-card {
+      background: linear-gradient(135deg, rgba(15, 20, 34, 0.8), rgba(20, 27, 45, 0.6));
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .banner-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .banner-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+
+    .dot-live {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .banner-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* AUTHENTICATION TOOLBAR (2 KEYS: API KEY & API SECRET) */
+    .auth-toolbar-box {
+      background: rgba(11, 15, 25, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 16px;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .auth-toolbar-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .auth-toolbar-title h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .auth-status-badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .auth-status-badge.active {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #34d399;
+    }
+
+    .auth-status-badge.inactive {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #fbbf24;
+    }
+
+    .auth-inputs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    @media (max-width: 860px) {
+      .auth-inputs-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .auth-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .auth-field label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .auth-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .auth-input {
+      width: 100%;
+      background: #141b2d;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 10px;
+      color: #ffffff;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 10px 14px;
+      transition: all 0.2s ease;
+    }
+
+    .auth-input:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+      outline: none;
+    }
+
+    .btn-toggle-eye {
+      position: absolute;
+      right: 8px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+    }
+
+    .btn-toggle-eye:hover {
+      color: #ffffff;
+    }
+
+    .btn-apply-auth {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      border: none;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 11px 22px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .btn-apply-auth:hover {
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+      transform: translateY(-1px);
+    }
+
+    /* Swagger Container */
+    #swagger-ui {
+      position: relative;
+      z-index: 2;
+      max-width: 1200px;
+      margin: 10px auto 60px;
+      padding: 0 20px;
+    }
+
+    /* SWAGGER DARK OVERRIDES */
+    .swagger-ui {
+      color: #f1f5f9 !important;
+      font-family: var(--font-sans) !important;
+    }
+
+    .swagger-ui .info {
+      margin: 20px 0 25px !important;
+    }
+
+    .swagger-ui .info .title {
+      color: #ffffff !important;
+      font-size: 26px !important;
+      font-weight: 800 !important;
+    }
+
+    .swagger-ui .info p,
+    .swagger-ui .info li,
+    .swagger-ui .info span,
+    .swagger-ui .info div {
+      color: #cbd5e1 !important;
+      font-size: 14px !important;
+      line-height: 1.6 !important;
+    }
+
+    .swagger-ui .scheme-container {
+      display: none !important; /* Ẩn scheme container vì đã có thanh Auth chuyên dụng phía trên */
+    }
+
+    .swagger-ui .opblock-tag {
+      font-family: var(--font-sans) !important;
+      color: #ffffff !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+      font-size: 18px !important;
+      font-weight: 800 !important;
+      padding: 14px 0 10px !important;
+    }
+
+    .swagger-ui .opblock-tag a {
+      color: #ffffff !important;
+    }
+
+    .swagger-ui .opblock-tag small {
+      color: #94a3b8 !important;
+      font-size: 13px !important;
+      margin-left: 10px !important;
+    }
+
+    .swagger-ui .opblock {
+      background: #0b0f19 !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-radius: 14px !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+      margin-bottom: 14px !important;
+      overflow: hidden !important;
+      transition: all 0.2s ease !important;
+    }
+
+    .swagger-ui .opblock:hover {
+      border-color: rgba(255, 255, 255, 0.22) !important;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
+    }
+
+    .swagger-ui .opblock .opblock-summary {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+      padding: 12px 18px !important;
+    }
+
+    .swagger-ui .opblock.opblock-get {
+      border-color: rgba(56, 189, 248, 0.3) !important;
+      background: rgba(56, 189, 248, 0.03) !important;
+    }
+
+    .swagger-ui .opblock.opblock-get .opblock-summary-method {
+      background: #0284c7 !important;
+      font-family: var(--font-mono) !important;
+      font-weight: 800 !important;
+      border-radius: 8px !important;
+      color: #ffffff !important;
+    }
+
+    .swagger-ui .opblock-summary-path {
+      color: #ffffff !important;
+      font-family: var(--font-mono) !important;
+      font-size: 14px !important;
+      font-weight: 700 !important;
+    }
+
+    .swagger-ui .opblock-summary-path a span {
+      color: #ffffff !important;
+    }
+
+    .swagger-ui .opblock-summary-description {
+      color: #cbd5e1 !important;
+      font-size: 13px !important;
+    }
+
+    /* Ổ khóa trên thanh endpoint: Màu xanh ngọc sáng */
+    .swagger-ui .authorization__btn {
+      padding: 4px 8px !important;
+      background: transparent !important;
+      border: none !important;
+    }
+
+    .swagger-ui .authorization__btn svg {
+      fill: #38bdf8 !important;
+      stroke: #38bdf8 !important;
+      filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.5)) !important;
+    }
+
+    .swagger-ui .authorization__btn.locked svg {
+      fill: #34d399 !important;
+      stroke: #34d399 !important;
+      filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.6)) !important;
+    }
+
+    /* Mũi tên Chevron mở rộng */
+    .swagger-ui svg.arrow,
+    .swagger-ui .arrow svg,
+    .swagger-ui button.opblock-control-arrow svg,
+    .swagger-ui .opblock-summary-control svg {
+      fill: #f1f5f9 !important;
+      stroke: #f1f5f9 !important;
+      opacity: 0.9 !important;
+    }
+
+    .swagger-ui .opblock .opblock-section-header {
+      background: #141b2d !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+      padding: 10px 18px !important;
+    }
+
+    .swagger-ui .opblock .opblock-section-header h4 {
+      color: #ffffff !important;
+      font-weight: 700 !important;
+    }
+
+    .swagger-ui .opblock-body {
+      background: #080c16 !important;
+      color: #cbd5e1 !important;
+    }
+
+    .swagger-ui .opblock-description-wrapper p {
+      color: #cbd5e1 !important;
+      font-size: 13px !important;
+    }
+
+    /* Bảng thông số & responses */
+    .swagger-ui table thead tr th {
+      color: #94a3b8 !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+    }
+
+    .swagger-ui table tbody tr td {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }
+
+    .swagger-ui .parameter__name {
+      color: #38bdf8 !important;
+      font-weight: 700 !important;
+      font-family: var(--font-mono) !important;
+    }
+
+    .swagger-ui .parameter__type {
+      color: #94a3b8 !important;
+      font-family: var(--font-mono) !important;
+    }
+
+    .swagger-ui .parameter__in {
+      color: #64748b !important;
+      font-family: var(--font-mono) !important;
+    }
+
+    .swagger-ui .response-col_status {
+      color: #ffffff !important;
+      font-family: var(--font-mono) !important;
+      font-weight: 700 !important;
+    }
+
+    .swagger-ui .response-col_description {
+      color: #cbd5e1 !important;
+    }
+
+    .swagger-ui select,
+    .swagger-ui input[type=text],
+    .swagger-ui textarea {
+      background: #141b2d !important;
+      color: #ffffff !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+      border-radius: 8px !important;
+      font-family: var(--font-mono) !important;
+      padding: 8px 12px !important;
+    }
+
+    .swagger-ui select:focus,
+    .swagger-ui input[type=text]:focus,
+    .swagger-ui textarea:focus {
+      border-color: #38bdf8 !important;
+      outline: none !important;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3) !important;
+    }
+
+    .swagger-ui .highlight-code,
+    .swagger-ui pre {
+      background: #04060b !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-radius: 10px !important;
+      color: #e2e8f0 !important;
+      font-family: var(--font-mono) !important;
+    }
+
+    .swagger-ui .highlight-code * {
+      color: inherit !important;
+    }
+
+    /* Buttons */
+    .swagger-ui .btn.try-out__btn {
+      background: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.25) !important;
+      color: #ffffff !important;
+      font-weight: 700 !important;
+      border-radius: 8px !important;
+      padding: 6px 16px !important;
+    }
+
+    .swagger-ui .btn.try-out__btn:hover {
+      background: rgba(56, 189, 248, 0.2) !important;
+      border-color: #38bdf8 !important;
+      color: #38bdf8 !important;
+    }
+
+    .swagger-ui .btn.execute {
+      background: linear-gradient(135deg, #2563eb, #38bdf8) !important;
+      border: none !important;
+      color: #ffffff !important;
+      font-weight: 800 !important;
+      border-radius: 8px !important;
+      padding: 10px 24px !important;
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4) !important;
+    }
+
+    .swagger-ui .btn.execute:hover {
+      box-shadow: 0 6px 22px rgba(56, 189, 248, 0.6) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    .swagger-ui .btn.cancel {
+      background: rgba(244, 63, 94, 0.15) !important;
+      border: 1px solid rgba(244, 63, 94, 0.4) !important;
+      color: #fb7185 !important;
+    }
+
+    .swagger-ui .btn.btn-clear {
+      background: rgba(255, 255, 255, 0.08) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+      color: #cbd5e1 !important;
+    }
+
+    /* Ẩn nút Authorize mặc định của Swagger vì đã có thanh nhập 2 key chuyên dụng ở trên */
+    .swagger-ui .auth-wrapper {
+      display: none !important;
+    }
+
+    /* Footer */
+    .docs-footer {
+      text-align: center;
+      padding: 30px 20px 50px;
+      font-size: 13px;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border-subtle);
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.35);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Nav -->
+  <header class="top-nav">
+    <a href="/developer.html" class="brand-link" title="Quay lại Developer Portal">
+      <div class="brand-logo-pill">CD</div>
+      <div class="brand-meta">
+        <h1>COBE DENIM</h1>
+        <span>COMMERCIAL API • SWAGGER EXPLORER</span>
+      </div>
+    </a>
+
+    <div class="nav-actions">
+      <a href="/developer.html" class="nav-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        Quay lại Portal Đối Tác
+      </a>
+      <a href="/" class="nav-btn">
+        Tra cứu tồn kho
+      </a>
+    </div>
+  </header>
+
+  <!-- Banner Info -->
+  <section class="docs-banner">
+    <div class="banner-card">
+      <div class="banner-header">
+        <div>
+          <div class="banner-title">
+            <span>Tài Liệu Tra Cứu Tồn Kho Cobe Denim</span>
+            <span class="badge-live"><span class="dot-live"></span> v1.0.0 Live</span>
+          </div>
+          <p class="banner-desc" style="margin-top: 6px;">
+            API Thương mại dành riêng cho CTV, Đối tác và Sàn TMĐT tra cứu số lượng hàng tồn kho theo thời gian thực kết nối MShopKeeper MISA.
+          </p>
+        </div>
+
+        <a href="/developer.html" class="nav-btn primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg>
+          Lấy Key từ Portal
+        </a>
+      </div>
+
+      <!-- AUTHENTICATION TOOLBAR: CHỈ CẦN 2 KHÓA (API KEY & API SECRET) -->
+      <div class="auth-toolbar-box">
+        <div class="auth-toolbar-title">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Xác Thực Khóa API (Chữ Ký Số Tự Động HMAC-SHA256)
+          </h3>
+          <span id="authStatusBadge" class="auth-status-badge inactive">
+            Chưa có khóa — Nhập key để gọi thử
+          </span>
+        </div>
+
+        <div class="auth-inputs-grid">
+          <div class="auth-field">
+            <label for="swgApiKey">1. API Key (Public Key)</label>
+            <div class="auth-input-wrap">
+              <input type="text" id="swgApiKey" class="auth-input" placeholder="cobe_pk_live_...">
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label for="swgApiSecret">2. API Secret (Khóa Bí Mật)</label>
+            <div class="auth-input-wrap">
+              <input type="password" id="swgApiSecret" class="auth-input" placeholder="cobe_sk_live_...">
+              <button type="button" class="btn-toggle-eye" onclick="toggleSecretVisibility()" title="Ẩn/Hiện Secret">
+                <svg id="eyeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-apply-auth" onclick="saveAuthKeys()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Lưu & Áp Dụng
+            </button>
+            <button type="button" class="nav-btn" onclick="autoLoadKeysFromPortal()" title="Tự lấy key từ tài khoản đã đăng nhập" style="padding: 10px 14px;">
+              ⚡ Nạp từ Portal
+            </button>
+          </div>
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-dim); line-height: 1.5;">
+          💡 <em>Hệ thống sẽ <strong>tự động tạo timestamp, nonce và tính chữ ký số x-signature</strong> khi bạn bấm <strong>"Execute"</strong>. Bạn không cần tự tính toán thủ công!</em>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Swagger UI Target -->
+  <div id="swagger-ui"></div>
+
+  <!-- Footer -->
+  <footer class="docs-footer">
+    <p>© 2026 Cobe Denim. Đồng bộ tự động với MShopKeeper MISA • API chuẩn RESTful OpenAPI 3.0</p>
+  </footer>
+
+  <!-- Swagger UI Official Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
+
+  <script>
+    // State quản lý 2 Key
+    let currentApiKey = localStorage.getItem('cobe_swg_api_key') || '';
+    let currentApiSecret = localStorage.getItem('cobe_swg_api_secret') || '';
+
+    // Hàm ẩn/hiện Secret
+    function toggleSecretVisibility() {
+      const input = document.getElementById('swgApiSecret');
+      const icon = document.getElementById('eyeIcon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.innerHTML = '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>';
+      } else {
+        input.type = 'password';
+        icon.innerHTML = '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+      }
+    }
+
+    // Cập nhật trạng thái hiển thị
+    function updateAuthStatusUI() {
+      const badge = document.getElementById('authStatusBadge');
+      if (currentApiKey && currentApiSecret) {
+        badge.className = 'auth-status-badge active';
+        badge.innerHTML = '✓ Đã sẵn sàng — Tự động ký số HMAC khi gọi API';
+      } else {
+        badge.className = 'auth-status-badge inactive';
+        badge.innerHTML = 'Chưa có khóa — Nhập đủ 2 key để gọi thử';
+      }
+    }
+
+    // Lưu khóa vào LocalStorage
+    function saveAuthKeys() {
+      const key = document.getElementById('swgApiKey').value.trim();
+      const secret = document.getElementById('swgApiSecret').value.trim();
+
+      if (!key || !secret) {
+        alert('Vui lòng nhập đầy đủ cả API Key và API Secret!');
+        return;
+      }
+
+      currentApiKey = key;
+      currentApiSecret = secret;
+      localStorage.setItem('cobe_swg_api_key', key);
+      localStorage.setItem('cobe_swg_api_secret', secret);
+      updateAuthStatusUI();
+      alert('✓ Đã lưu khóa xác thực thành công! Giờ bạn có thể bấm "Try it out" và "Execute" bất kỳ API nào bên dưới.');
+    }
+
+    // Nạp tự động từ tài khoản đã đăng nhập ở /developer.html
+    async function autoLoadKeysFromPortal() {
+      const token = localStorage.getItem('cobe_partner_token');
+      if (!token) {
+        alert('Chưa tìm thấy phiên đăng nhập đối tác. Hãy đăng nhập tại trang /developer.html trước hoặc nhập trực tiếp 2 key.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && data.user && data.user.apiKey && data.user.apiSecret) {
+          document.getElementById('swgApiKey').value = data.user.apiKey;
+          document.getElementById('swgApiSecret').value = data.user.apiSecret;
+          saveAuthKeys();
+        } else {
+          alert('Không thể lấy key từ tài khoản: ' + (data.message || 'Lỗi không xác định'));
+        }
+      } catch (err) {
+        alert('Lỗi kết nối máy chủ: ' + err.message);
+      }
+    }
+
+    // Khởi tạo trang & Swagger UI
+    window.onload = function() {
+      // Khôi phục giá trị key nếu có
+      if (currentApiKey) document.getElementById('swgApiKey').value = currentApiKey;
+      if (currentApiSecret) document.getElementById('swgApiSecret').value = currentApiSecret;
+      updateAuthStatusUI();
+
+      // OpenAPI Spec CHỈ CHỨA ĐÚNG CÁC API THƯƠNG MẠI TRA CỨU SẢN PHẨM
+      const openApiSpec = {
+        openapi: "3.0.3",
+        info: {
+          title: "API Tra Cứu Tồn Kho Cobe Denim",
+          version: "1.0.0",
+          description: "Cổng API Thương mại kết nối trực tiếp kho hàng MShopKeeper MISA. Yêu cầu xác thực chữ ký số HMAC-SHA256 (được hệ thống tự động băm khi nhập đủ 2 khóa ở thanh trên).",
+          contact: {
+            name: "Hỗ Trợ Tích Hợp Cobe Denim",
+            url: "/developer.html"
+          }
+        },
+        servers: [
+          {
+            url: window.location.origin,
+            description: "Máy chủ Cobe Denim (Local / Cloudflare Edge)"
+          }
+        ],
+        tags: [
+          {
+            name: "Tra Cứu Tồn Kho (Commercial API)",
+            description: "Các endpoint tra cứu kho hàng và ping máy chủ có xác thực HMAC-SHA256"
+          }
+        ],
+        paths: {
+          "/api/v1/ping": {
+            get: {
+              tags: ["Tra Cứu Tồn Kho (Commercial API)"],
+              summary: "Kiểm tra kết nối Live Ping & xác thực chữ ký",
+              description: "Dùng để kiểm tra độ trễ mạng và xác thực xem cặp API Key / Secret Key có hợp lệ và còn hạn 30 ngày hay không.",
+              responses: {
+                "200": {
+                  description: "Xác thực thành công",
+                  content: {
+                    "application/json": {
+                      example: {
+                        success: true,
+                        message: "Xác thực Commercial API thành công!",
+                        client: { id: "usr_test_...", name: "Đối Tác Thử Nghiệm" },
+                        serverTime: "2026-10-10T15:30:00.000Z"
+                      }
+                    }
+                  }
+                },
+                "401": { description: "Sai API Key hoặc chữ ký HMAC không hợp lệ" },
+                "403": { description: "Gói cước đã hết hạn (SUBSCRIPTION_EXPIRED)" }
+              }
+            }
+          },
+          "/api/v1/products": {
+            get: {
+              tags: ["Tra Cứu Tồn Kho (Commercial API)"],
+              summary: "Tra cứu danh sách sản phẩm & số lượng tồn kho",
+              description: "Tra cứu tồn kho theo thời gian thực từ MShopKeeper MISA. Hỗ trợ tìm kiếm theo SKU, mã vạch (Barcode), tên sản phẩm và phân trang. Tối đa 50 sản phẩm/lượt gọi.",
+              parameters: [
+                {
+                  name: "search",
+                  in: "query",
+                  description: "Từ khóa tìm kiếm (Tên sản phẩm, mã SKU, mã vạch)",
+                  schema: { type: "string" },
+                  example: "jean"
+                },
+                {
+                  name: "page",
+                  in: "query",
+                  description: "Số trang (Mặc định: 1)",
+                  schema: { type: "integer", default: 1 }
+                },
+                {
+                  name: "limit",
+                  in: "query",
+                  description: "Số sản phẩm mỗi trang (Tối đa: 50)",
+                  schema: { type: "integer", default: 20 }
+                }
+              ],
+              responses: {
+                "200": {
+                  description: "Lấy dữ liệu tồn kho thành công",
+                  content: {
+                    "application/json": {
+                      example: {
+                        success: true,
+                        meta: {
+                          total: 1223,
+                          page: 1,
+                          limit: 20,
+                          totalPages: 62
+                        },
+                        products: [
+                          {
+                            id: "SP001",
+                            sku: "QJ-XANH-29",
+                            name: "Quần Jean Slimfit Xanh Đậm",
+                            barcode: "8935000001",
+                            price: 450000,
+                            totalInventory: 18,
+                            branches: [
+                              { branchName: "Kho Tổng Cobe Denim", inventory: 18 }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "401": { description: "Chưa cấu hình API Key hoặc chữ ký không đúng" },
+                "403": { description: "Tài khoản hết hạn hoặc bị tạm khóa" }
+              }
+            }
+          }
+        }
+      };
+
+      // Khởi tạo Swagger UI với requestInterceptor tự động ký HMAC-SHA256
+      SwaggerUIBundle({
+        spec: openApiSpec,
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: "BaseLayout",
+        defaultModelsExpandDepth: -1,
+        docExpansion: "list",
+        // BỘ CAN THIỆP TỰ ĐỘNG KÝ SỐ HMAC-SHA256 CHO MỌI REQUEST
+        requestInterceptor: (req) => {
+          if (!currentApiKey || !currentApiSecret) {
+            alert('⚠️ Chú ý: Bạn chưa nhập API Key & Secret ở thanh phía trên! Vui lòng nhập hoặc bấm "⚡ Nạp từ Portal" trước khi Execute.');
+            return req;
+          }
+
+          try {
+            const urlObj = new URL(req.url, window.location.origin);
+            const path = urlObj.pathname.toLowerCase().replace(/\/+$/, '');
+            const timestamp = Date.now().toString();
+            const nonce = 'swg_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+            const method = (req.method || 'GET').toUpperCase();
+
+            // Chuẩn hóa chuỗi ký số: METHOD:PATH:TIMESTAMP:NONCE
+            const canonical = `${method}:${path}:${timestamp}:${nonce}`;
+            
+            // Tính HMAC-SHA256 bằng Crypto-JS
+            const signature = CryptoJS.HmacSHA256(canonical, currentApiSecret).toString(CryptoJS.enc.Hex);
+
+            // Gắn tự động 4 headers bảo mật
+            req.headers['x-api-key'] = currentApiKey;
+            req.headers['x-timestamp'] = timestamp;
+            req.headers['x-nonce'] = nonce;
+            req.headers['x-signature'] = signature;
+
+            console.log('[SWAGGER-AUTO-HMAC] ✓ Đã tự động tạo chữ ký số cho endpoint:', path, {
+              timestamp,
+              nonce,
+              signature
+            });
+          } catch (err) {
+            console.error('[SWAGGER-AUTO-HMAC] Lỗi khi tạo chữ ký:', err);
+          }
+
+          return req;
+        }
+      });
+    };
+  </script>
+</body>
+</html>

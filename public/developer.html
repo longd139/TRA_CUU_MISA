@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="denim">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cổng Đối Tác API — Cobe Denim Developer Portal</title>
+  <meta name="description" content="Đăng ký & quản lý API Key thương mại tra cứu tồn kho Cobe Denim kết nối MShopKeeper">
+
+  <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Canvas Confetti for Payment Celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <style>
+    :root {
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      --bg-base: #06080d;
+      --bg-surface: #0b0f19;
+      --bg-card: #0f1422;
+      --bg-card-inner: #141b2d;
+      
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(56, 189, 248, 0.25);
+      
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --accent-cyan: #38bdf8;
+      --accent-blue: #2563eb;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      
+      --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+      background-image: 
+        radial-gradient(ellipse 60% 50% at 50% -10%, rgba(37, 99, 235, 0.15), transparent 70%),
+        radial-gradient(circle at 10% 40%, rgba(56, 189, 248, 0.05), transparent 40%),
+        radial-gradient(circle at 90% 70%, rgba(139, 92, 246, 0.05), transparent 40%);
+      background-attachment: fixed;
+    }
+
+    /* Ambient noise & grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .app-wrap {
+      position: relative;
+      z-index: 2;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px 24px 80px;
+    }
+
+    /* Navigation */
+    .top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9999px;
+      margin-bottom: 40px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-logo-pill {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #1e3a8a, #0284c7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: -0.5px;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .brand-meta h1 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff;
+    }
+
+    .brand-meta span {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 9999px;
+      text-decoration: none;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: all 0.25s var(--ease-spring);
+    }
+
+    .nav-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .nav-btn.primary {
+      background: linear-gradient(135deg, #2563eb, #0284c7);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    }
+
+    .nav-btn.primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    }
+
+    /* Double Bezel Container Architecture */
+    .bezel-outer {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 28px;
+      padding: 8px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+
+    .bezel-inner {
+      background: var(--bg-surface);
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 32px;
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Auth View */
+    .auth-container {
+      max-width: 480px;
+      margin: 40px auto 0;
+    }
+
+    .auth-hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--accent-cyan);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .auth-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .auth-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    /* Segmented Tab Bar */
+    .tab-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 4px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 14px;
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 24px;
+    }
+
+    .tab-btn {
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--text-muted);
+      border-radius: 10px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Input Field */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .input-field::placeholder {
+      color: var(--text-dim);
+    }
+
+    .input-icon-btn {
+      position: absolute;
+      right: 12px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .input-icon-btn:hover {
+      color: var(--text-main);
+    }
+
+    .input-field.is-invalid {
+      border-color: var(--accent-rose) !important;
+      background: rgba(244, 63, 94, 0.06) !important;
+      box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
+    }
+
+    .input-field.is-valid {
+      border-color: var(--accent-emerald) !important;
+      background: rgba(16, 185, 129, 0.05) !important;
+    }
+
+    .field-hint-msg {
+      display: none;
+      font-size: 11.5px;
+      font-weight: 600;
+      margin-top: 6px;
+      line-height: 1.4;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .field-hint-msg.show-error {
+      display: flex;
+      color: #fb7185;
+      animation: fieldShake 0.25s ease;
+    }
+
+    .field-hint-msg.show-success {
+      display: flex;
+      color: #34d399;
+    }
+
+    @keyframes fieldShake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+
+    /* Pricing badge summary */
+    .pricing-perk-box {
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .perk-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-emerald);
+      flex-shrink: 0;
+    }
+
+    .perk-text {
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+
+    .perk-text strong {
+      color: var(--accent-emerald);
+      font-weight: 700;
+    }
+
+    /* Button-in-Button Architecture */
+    .btn-island {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 9999px;
+      background: linear-gradient(135deg, #2563eb, #0284c7);
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+      transition: all 0.3s var(--ease-spring);
+    }
+
+    .btn-island:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(37, 99, 235, 0.5);
+    }
+
+    .btn-island:active {
+      transform: scale(0.98);
+    }
+
+    .btn-island-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s var(--ease-spring);
+    }
+
+    .btn-island:hover .btn-island-icon {
+      transform: translateX(3px) rotate(-15deg);
+    }
+
+    /* Dashboard Grid (Bento) */
+    .dashboard-wrap {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    @media (min-width: 900px) {
+      .dashboard-wrap {
+        grid-template-columns: 1.1fr 0.9fr;
+      }
+    }
+
+    .bento-full {
+      grid-column: 1 / -1;
+    }
+
+    /* Status Pill Badge */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .status-badge.active {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .status-badge.expired {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fb7185;
+    }
+
+    .dot-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* Key Vault Box */
+    .key-field-box {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+    }
+
+    .key-field-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .key-field-val {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .key-text {
+      flex: 1;
+      min-width: 0;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
+    }
+
+    .key-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .btn-icon-square {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .btn-icon-square:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-copy {
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .btn-copy:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-copy.copied {
+      background: rgba(16, 185, 129, 0.22) !important;
+      border-color: rgba(16, 185, 129, 0.5) !important;
+      color: #34d399 !important;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.3) !important;
+    }
+
+    /* Code Playground Box */
+    .code-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 8px;
+    }
+
+    .code-tab-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .code-tab-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+    }
+
+    .code-block {
+      background: #05070c;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #94a3b8;
+      overflow-x: auto;
+      max-height: 380px;
+      line-height: 1.6;
+    }
+
+    /* Modal PayOS */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(16px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 460px;
+      background: var(--bg-surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 28px;
+      padding: 28px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
+      position: relative;
+      transform: scale(0.95) translateY(10px);
+      transition: all 0.3s var(--ease-spring);
+    }
+
+    .modal-overlay.open .modal-card {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .modal-close-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    .qr-frame {
+      background: #fff;
+      padding: 16px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px auto;
+      width: 240px;
+      height: 240px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .qr-frame img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+
+    /* Toast system */
+    .toast-box {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .toast-item {
+      padding: 12px 20px;
+      border-radius: 12px;
+      background: rgba(15, 20, 34, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastIn 0.3s var(--ease-spring);
+    }
+
+    @keyframes toastIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-wrap">
+    
+    <!-- Top Nav -->
+    <header class="top-nav">
+      <a href="/" class="brand-link" title="Về trang chủ tra cứu kho">
+        <div class="brand-logo-pill">CD</div>
+        <div class="brand-meta">
+          <h1>COBE DENIM</h1>
+          <span>DEVELOPER PORTAL • API</span>
+        </div>
+      </a>
+
+      <div class="nav-actions">
+        <a href="/swagger.html" target="_blank" class="nav-btn" title="Mở Swagger API Explorer tương tác trực tiếp">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
+          Swagger Docs ↗
+        </a>
+        <a href="/" class="nav-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          Tra cứu tồn kho
+        </a>
+
+        <!-- User Logged In Slot -->
+        <div id="userNavSlot" style="display: none; align-items: center; gap: 10px;">
+          <span id="navPhoneBadge" style="font-size: 13px; font-weight: 700; color: #fff;"></span>
+          <button id="btnLogout" class="nav-btn" style="padding: 6px 12px;">Đăng xuất</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- VIEW 1: AUTHENTICATION (CHƯA ĐĂNG NHẬP) -->
+    <section id="authSection" class="auth-container">
+      <div class="bezel-outer">
+        <div class="bezel-inner">
+          <div class="auth-hero-badge">
+            <span class="dot-pulse" style="color: var(--accent-cyan);"></span>
+            CỔNG KẾT NỐI API THƯƠNG MẠI
+          </div>
+          
+          <h2 class="auth-title" id="authFormTitle">Đăng nhập Đối tác</h2>
+          <p class="auth-subtitle">Tra cứu tồn kho tự động 24/7 với chữ ký số HMAC-SHA256 bảo mật cao cấp.</p>
+
+          <!-- Tab chuyển đổi -->
+          <div class="tab-switch">
+            <button type="button" class="tab-btn active" id="tabLogin" onclick="switchAuthTab('login')">Đăng nhập</button>
+            <button type="button" class="tab-btn" id="tabRegister" onclick="switchAuthTab('register')">Đăng ký mới</button>
+          </div>
+
+          <!-- Form Auth -->
+          <form id="authForm" novalidate onsubmit="handleAuthSubmit(event)">
+            <div class="form-group" id="groupName" style="display: none;">
+              <label class="form-label">Họ và tên</label>
+              <div class="input-wrap">
+                <input type="text" id="authName" class="input-field" placeholder="Ví dụ: Nguyễn Văn A">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Số điện thoại</label>
+              <div class="input-wrap">
+                <input type="tel" id="authPhone" class="input-field" placeholder="10 số (VD: 0987654321)" autocomplete="tel">
+              </div>
+              <div class="field-hint-msg" id="hintPhone"></div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Mật khẩu</label>
+              <div class="input-wrap">
+                <input type="password" id="authPassword" class="input-field" placeholder="Tối thiểu 6 ký tự">
+                <button type="button" class="input-icon-btn" onclick="togglePasswordVisibility('authPassword', this)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <div class="field-hint-msg" id="hintPassword"></div>
+            </div>
+
+            <div class="form-group" id="groupConfirmPassword" style="display: none;">
+              <label class="form-label">Xác nhận mật khẩu</label>
+              <div class="input-wrap">
+                <input type="password" id="authConfirmPassword" class="input-field" placeholder="Nhập lại mật khẩu">
+                <button type="button" class="input-icon-btn" onclick="togglePasswordVisibility('authConfirmPassword', this)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <div class="field-hint-msg" id="hintConfirmPassword"></div>
+            </div>
+
+            <!-- Perk summary -->
+            <div class="pricing-perk-box">
+              <div class="perk-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="perk-text">
+                Thuê API chỉ <strong>100.000 đ / 30 ngày</strong> (~3.300 đ/ngày). Kích hoạt tự động qua VietQR PayOS trong 3 giây.
+              </div>
+            </div>
+
+            <button type="submit" class="btn-island" id="btnAuthSubmit">
+              <span id="btnAuthText">Đăng nhập vào Portal</span>
+              <div class="btn-island-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </div>
+            </button>
+          </form>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: DEVELOPER DASHBOARD (ĐÃ ĐĂNG NHẬP) -->
+    <section id="dashboardSection" class="dashboard-wrap" style="display: none;">
+      
+      <!-- Card 1: Gói Cước & Tình Trạng Thuê Bao -->
+      <div class="bezel-outer">
+        <div class="bezel-inner">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px;">
+            <div>
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase;">GÓI DỊCH VỤ HIỆN TẠI</span>
+              <h2 style="font-size: 22px; font-weight: 800; color: #fff; margin-top: 4px;">Standard Commercial API</h2>
+              <p style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">Cổng truy vấn tồn kho MShopKeeper thương mại</p>
+            </div>
+            
+            <div id="subStatusBadge" class="status-badge active">
+              <span class="dot-pulse"></span>
+              <span id="subStatusText">Đang kích hoạt</span>
+            </div>
+          </div>
+
+          <!-- Subscription Metrics Grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px;">
+            <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 14px; border: 1px solid var(--border-subtle);">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Thời hạn còn lại</div>
+              <div style="font-size: 28px; font-weight: 800; color: #fff; margin: 4px 0;" id="daysRemainingText">0 ngày</div>
+              <div style="font-size: 12px; color: var(--text-muted);" id="expiryDateText">Chưa kích hoạt</div>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 14px; border: 1px solid var(--border-subtle);">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Giá cước niêm yết</div>
+              <div style="font-size: 28px; font-weight: 800; color: var(--accent-emerald); margin: 4px 0;">100.000 đ</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Chu kỳ 30 ngày (cộng dồn)</div>
+            </div>
+          </div>
+
+          <!-- CTA Gia hạn -->
+          <button type="button" class="btn-island" onclick="openPaymentModal()" id="btnOpenRenew">
+            <span>Gia hạn thêm 30 ngày (100.000 đ)</span>
+            <div class="btn-island-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7V17"/></svg>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 2: Két Sắt Khóa Bảo Mật (Key Vault) -->
+      <div class="bezel-outer">
+        <div class="bezel-inner">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <div>
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase;">XÁC THỰC MÃ HÓA</span>
+              <h2 style="font-size: 22px; font-weight: 800; color: #fff; margin-top: 4px;">Khóa Truy Cập API</h2>
+            </div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); background: rgba(56, 189, 248, 0.1); padding: 4px 10px; border-radius: 999px;">
+              HMAC-SHA256
+            </div>
+          </div>
+
+          <!-- API Key Field -->
+          <div class="key-field-box">
+            <div class="key-field-header">
+              <span>Public API Key (x-api-key)</span>
+              <span style="color: var(--accent-emerald);">Công khai</span>
+            </div>
+            <div class="key-field-val">
+              <span id="displayApiKey" class="key-text" style="user-select: all;">Đang tải...</span>
+              <div class="key-actions">
+                <button class="btn-copy" onclick="copyToClipboard(currentPartner.apiKey, this, 'Đã sao chép API Key!')" title="Sao chép API Key">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- API Secret Field -->
+          <div class="key-field-box">
+            <div class="key-field-header">
+              <span>Secret Key (x-signature)</span>
+              <span style="color: var(--accent-rose);">Tối mật</span>
+            </div>
+            <div class="key-field-val">
+              <span id="displayApiSecret" class="key-text" style="letter-spacing: 2px;">••••••••••••••••••••••••</span>
+              <div class="key-actions">
+                <button class="btn-icon-square" id="btnToggleSecret" onclick="toggleApiSecretVisibility()" title="Hiện Secret Key">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button class="btn-copy" onclick="copyToClipboard(currentPartner.apiSecret, this, 'Đã sao chép API Secret!')" title="Sao chép Secret Key">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Security note -->
+          <div style="font-size: 11.5px; color: var(--text-dim); line-height: 1.5; margin-top: 14px;">
+            ⚠️ <strong>Bảo mật:</strong> Tuyệt đối không để lộ `apiSecret` lên mã nguồn công khai (GitHub/Client-side). API yêu cầu tạo chữ ký HMAC-SHA256 kết hợp Nonce & Timestamp để chống tấn công giả mạo và Replay Attack.
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Live Sandbox & Code Snippets Generator (Full Width) -->
+      <div class="bezel-outer bento-full">
+        <div class="bezel-inner">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+            <div>
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase;">TÍCH HỢP TỰ ĐỘNG</span>
+              <h2 style="font-size: 22px; font-weight: 800; color: #fff; margin-top: 4px;">Mẫu Gọi API (Tự điền Key của bạn)</h2>
+            </div>
+            
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <a href="/swagger.html" target="_blank" class="btn-copy" style="text-decoration: none; color: var(--accent-cyan); border-color: rgba(56, 189, 248, 0.3);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
+                Swagger OpenAPI ↗
+              </a>
+              <button class="btn-copy" onclick="testLivePing()" id="btnTestPing">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                Kiểm tra kết nối Live Ping
+              </button>
+            </div>
+          </div>
+
+          <!-- Code Tabs Bar with Copy Button -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+            <div class="code-tabs" style="border: none; margin: 0; padding: 0;">
+              <button class="code-tab-btn active" onclick="switchCodeLang('python')">Python 3</button>
+              <button class="code-tab-btn" onclick="switchCodeLang('node')">Node.js (Axios)</button>
+              <button class="code-tab-btn" onclick="switchCodeLang('curl')">cURL (Bash)</button>
+              <button class="code-tab-btn" onclick="switchCodeLang('php')">PHP</button>
+            </div>
+            <button class="btn-copy" onclick="copyCurrentCodeSnippet(this)" title="Sao chép toàn bộ code">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <span>Copy Code</span>
+            </button>
+          </div>
+
+          <pre class="code-block" id="codeDisplayArea"><code>// Đang tạo mã nguồn...</code></pre>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- MODAL THANH TOÁN PAYOS -->
+  <div id="paymentModal" class="modal-overlay">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closePaymentModal()">✕</button>
+
+      <div style="text-align: center;">
+        <span class="auth-hero-badge" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: var(--accent-emerald);">
+          THANH TOÁN TỰ ĐỘNG VIETQR
+        </span>
+        <h3 style="font-size: 22px; font-weight: 800; color: #fff; margin-top: 6px;">Gia Hạn API 30 Ngày</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Quét mã bằng bất kỳ ứng dụng ngân hàng nào (MB, VCB, Techcombank...)</p>
+      </div>
+
+      <!-- Loading skeleton -->
+      <div id="payosLoading" style="text-align: center; padding: 40px 0;">
+        <div class="dot-pulse" style="width: 16px; height: 16px; margin: 0 auto 12px; color: var(--accent-cyan);"></div>
+        <div style="font-size: 13px; color: var(--text-muted);">Đang kết nối cổng thanh toán PayOS...</div>
+      </div>
+
+      <!-- PayOS Content Area -->
+      <div id="payosContent" style="display: none;">
+        <div class="qr-frame">
+          <img id="payosQrImg" src="" alt="Mã VietQR PayOS">
+        </div>
+
+        <div style="background: rgba(0,0,0,0.3); padding: 14px 18px; border-radius: 14px; border: 1px solid var(--border-subtle); margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+            <span style="color: var(--text-muted);">Số tiền:</span>
+            <strong style="color: var(--accent-emerald); font-size: 16px;" id="payosAmountText">100.000 đ</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+            <span style="color: var(--text-muted);">Mã đơn hàng:</span>
+            <strong style="color: #fff; font-family: var(--font-mono);" id="payosOrderCode">#---</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px;">
+            <span style="color: var(--text-muted);">Trạng thái:</span>
+            <span id="payosStatusText" style="color: var(--accent-cyan); display: flex; align-items: center; gap: 6px;">
+              <span class="dot-pulse"></span>
+              Đang chờ chuyển khoản...
+            </span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <a id="payosCheckoutLink" href="#" target="_blank" class="nav-btn primary" style="flex: 1; justify-content: center; padding: 12px;">
+            Mở trang PayOS ↗
+          </a>
+          <button type="button" class="nav-btn" onclick="checkCurrentOrder(true)" style="padding: 12px 18px;">
+            Kiểm tra ngay
+          </button>
+        </div>
+      </div>
+
+      <!-- Fallback / Error Alert if Channel not created yet in PayOS Dashboard -->
+      <div id="payosErrorAlert" style="display: none; padding: 16px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 14px; margin-top: 16px;">
+        <div style="font-size: 13px; color: #fde68a; font-weight: 700; margin-bottom: 4px;">Lưu ý cấu hình PayOS:</div>
+        <div style="font-size: 12px; color: #cbd5e1; line-height: 1.5;" id="payosErrorMsg">
+          Cổng thanh toán chưa sẵn sàng. Hãy liên kết tài khoản ngân hàng tại my.payos.vn.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastBox" class="toast-box"></div>
+
+  <script>
+    // Global State
+    let currentPartner = null;
+    let currentAuthTab = 'login';
+    let isSecretVisible = false;
+    let currentOrderCode = null;
+    let paymentPollTimer = null;
+    let currentCodeLang = 'python';
+
+    // Init on Page Load
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('cobe_partner_token');
+      if (token) {
+        fetchPartnerProfile(token);
+      } else {
+        showAuthView();
+      }
+
+      // Lắng nghe sự kiện gõ phím để validate realtime
+      const phoneInput = document.getElementById('authPhone');
+      const passInput = document.getElementById('authPassword');
+      const confirmInput = document.getElementById('authConfirmPassword');
+
+      phoneInput.addEventListener('input', () => validatePhone(true));
+      phoneInput.addEventListener('blur', () => validatePhone(true));
+
+      passInput.addEventListener('input', () => validatePassword(true));
+      passInput.addEventListener('blur', () => validatePassword(true));
+
+      confirmInput.addEventListener('input', () => validateConfirmPassword(true));
+      confirmInput.addEventListener('blur', () => validateConfirmPassword(true));
+    });
+
+    // Helper: Cập nhật trạng thái viền và thông báo lỗi dưới ô input
+    function setFieldState(inputId, hintId, isValid, message = '') {
+      const input = document.getElementById(inputId);
+      const hint = document.getElementById(hintId);
+      if (!input || !hint) return;
+
+      if (isValid === true) {
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        hint.className = 'field-hint-msg show-success';
+        hint.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <span>${message || 'Hợp lệ'}</span>`;
+      } else if (isValid === false) {
+        input.classList.remove('is-valid');
+        input.classList.add('is-invalid');
+        hint.className = 'field-hint-msg show-error';
+        hint.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> <span>${message}</span>`;
+      } else {
+        input.classList.remove('is-valid', 'is-invalid');
+        hint.className = 'field-hint-msg';
+        hint.innerHTML = '';
+      }
+    }
+
+    // Validate Số điện thoại
+    function validatePhone(showError = true) {
+      const input = document.getElementById('authPhone');
+      const val = input.value.trim().replace(/\s+/g, '');
+      if (!val) {
+        if (showError) setFieldState('authPhone', 'hintPhone', false, 'Vui lòng nhập số điện thoại');
+        else setFieldState('authPhone', 'hintPhone', null);
+        return false;
+      }
+
+      if (!/^\d+$/.test(val)) {
+        setFieldState('authPhone', 'hintPhone', false, 'Số điện thoại chỉ được chứa chữ số');
+        return false;
+      }
+
+      if (val.length < 10) {
+        setFieldState('authPhone', 'hintPhone', false, `Số điện thoại phải đủ 10 chữ số (hiện tại: ${val.length}/10 số)`);
+        return false;
+      }
+      if (val.length > 10) {
+        setFieldState('authPhone', 'hintPhone', false, `Số điện thoại tối đa 10 chữ số (hiện tại: ${val.length} số)`);
+        return false;
+      }
+
+      // Đầu số mạng di động chuẩn Việt Nam
+      const prefix = val.substring(0, 2);
+      const validPrefixes = ['03', '05', '07', '08', '09'];
+      if (!validPrefixes.includes(prefix)) {
+        setFieldState('authPhone', 'hintPhone', false, `Đầu số "${prefix}" không đúng. Phải bắt đầu bằng 03, 05, 07, 08, 09 (VD: 0987654321)`);
+        return false;
+      }
+
+      setFieldState('authPhone', 'hintPhone', true, 'Số điện thoại hợp lệ');
+      return true;
+    }
+
+    // Validate Mật khẩu
+    function validatePassword(showError = true) {
+      const input = document.getElementById('authPassword');
+      const val = input.value;
+      if (!val) {
+        if (showError) setFieldState('authPassword', 'hintPassword', false, 'Vui lòng nhập mật khẩu');
+        else setFieldState('authPassword', 'hintPassword', null);
+        return false;
+      }
+
+      if (val.length < 6) {
+        setFieldState('authPassword', 'hintPassword', false, `Mật khẩu phải có tối thiểu 6 ký tự (hiện tại: ${val.length}/6)`);
+        return false;
+      }
+
+      setFieldState('authPassword', 'hintPassword', true, 'Mật khẩu hợp lệ');
+
+      if (currentAuthTab === 'register' && document.getElementById('authConfirmPassword').value) {
+        validateConfirmPassword(true);
+      }
+      return true;
+    }
+
+    // Validate Xác nhận mật khẩu
+    function validateConfirmPassword(showError = true) {
+      if (currentAuthTab !== 'register') return true;
+      const pass = document.getElementById('authPassword').value;
+      const input = document.getElementById('authConfirmPassword');
+      const val = input.value;
+
+      if (!val) {
+        if (showError) setFieldState('authConfirmPassword', 'hintConfirmPassword', false, 'Vui lòng nhập lại mật khẩu xác nhận');
+        else setFieldState('authConfirmPassword', 'hintConfirmPassword', null);
+        return false;
+      }
+
+      if (val !== pass) {
+        setFieldState('authConfirmPassword', 'hintConfirmPassword', false, 'Mật khẩu xác nhận không trùng khớp');
+        return false;
+      }
+
+      setFieldState('authConfirmPassword', 'hintConfirmPassword', true, 'Mật khẩu trùng khớp');
+      return true;
+    }
+
+    // Toast Notification Helper
+    function showToast(message, type = 'info') {
+      const box = document.getElementById('toastBox');
+      const item = document.createElement('div');
+      item.className = 'toast-item';
+      item.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${type === 'success' ? '#10b981' : '#38bdf8'}" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>${message}</span>
+      `;
+      box.appendChild(item);
+      setTimeout(() => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(10px)';
+        item.style.transition = 'all 0.3s ease';
+        setTimeout(() => item.remove(), 300);
+      }, 3500);
+    }
+
+    // Copy Helper (Tự động đổi màu xanh và hiển thị "Đã copy")
+    function copyToClipboard(text, btnElement = null, successMsg = 'Đã sao chép!') {
+      if (!text) return;
+
+      const triggerSuccessUI = () => {
+        showToast(successMsg, 'success');
+        if (btnElement) {
+          const originalHTML = btnElement.innerHTML;
+          btnElement.classList.add('copied');
+          btnElement.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Đã copy</span>
+          `;
+          btnElement.disabled = true;
+
+          setTimeout(() => {
+            btnElement.classList.remove('copied');
+            btnElement.innerHTML = originalHTML;
+            btnElement.disabled = false;
+          }, 2000);
+        }
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(triggerSuccessUI).catch(() => {
+          fallbackCopyText(text);
+          triggerSuccessUI();
+        });
+      } else {
+        fallbackCopyText(text);
+        triggerSuccessUI();
+      }
+    }
+
+    function fallbackCopyText(text) {
+      const temp = document.createElement('textarea');
+      temp.value = text;
+      temp.style.position = 'fixed';
+      temp.style.left = '-9999px';
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand('copy');
+      document.body.removeChild(temp);
+    }
+
+    function copyCurrentCodeSnippet(btn) {
+      const codeText = document.getElementById('codeDisplayArea').textContent;
+      copyToClipboard(codeText, btn, 'Đã sao chép mã nguồn mẫu!');
+    }
+
+    // Switch Auth Tab (Login / Register)
+    function switchAuthTab(tab) {
+      currentAuthTab = tab;
+      const btnLogin = document.getElementById('tabLogin');
+      const btnReg = document.getElementById('tabRegister');
+      const groupName = document.getElementById('groupName');
+      const groupConfirm = document.getElementById('groupConfirmPassword');
+      const formTitle = document.getElementById('authFormTitle');
+      const btnText = document.getElementById('btnAuthText');
+
+      // Reset các thông báo lỗi khi chuyển tab
+      setFieldState('authPhone', 'hintPhone', null);
+      setFieldState('authPassword', 'hintPassword', null);
+      setFieldState('authConfirmPassword', 'hintConfirmPassword', null);
+
+      if (tab === 'register') {
+        btnLogin.classList.remove('active');
+        btnReg.classList.add('active');
+        groupName.style.display = 'block';
+        groupConfirm.style.display = 'block';
+        formTitle.textContent = 'Đăng ký Tài khoản Đối tác';
+        btnText.textContent = 'Đăng ký & Nhận API Key';
+      } else {
+        btnReg.classList.remove('active');
+        btnLogin.classList.add('active');
+        groupName.style.display = 'none';
+        groupConfirm.style.display = 'none';
+        formTitle.textContent = 'Đăng nhập Đối tác';
+        btnText.textContent = 'Đăng nhập vào Portal';
+      }
+    }
+
+    // Toggle Password Visibility
+    function togglePasswordVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>`;
+      } else {
+        input.type = 'password';
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+      }
+    }
+
+    // Handle Auth Submit (Chặn spam API ngay tại Client)
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+
+      // Kiểm tra toàn bộ điều kiện trước khi gửi bất kỳ request nào lên server
+      const isPhoneValid = validatePhone(true);
+      const isPassValid = validatePassword(true);
+      const isConfirmValid = currentAuthTab === 'register' ? validateConfirmPassword(true) : true;
+
+      if (!isPhoneValid || !isPassValid || !isConfirmValid) {
+        // Focus vào trường nhập sai đầu tiên
+        if (!isPhoneValid) document.getElementById('authPhone').focus();
+        else if (!isPassValid) document.getElementById('authPassword').focus();
+        else if (!isConfirmValid) document.getElementById('authConfirmPassword').focus();
+
+        showToast('Vui lòng sửa các lỗi hiển thị màu đỏ trước khi tiếp tục', 'error');
+        return; // CHẶN LẠI HOÀN TOÀN - KHÔNG GỌI API!
+      }
+
+      const phone = document.getElementById('authPhone').value.trim().replace(/\s+/g, '');
+      const password = document.getElementById('authPassword').value;
+      const name = document.getElementById('authName').value.trim();
+      const submitBtn = document.getElementById('btnAuthSubmit');
+
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.7';
+
+      const endpoint = currentAuthTab === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const bodyData = { phone, password };
+      if (currentAuthTab === 'register') bodyData.name = name;
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          localStorage.setItem('cobe_partner_token', data.token);
+          showToast(data.message || 'Xác thực thành công!', 'success');
+          currentPartner = data.user;
+          renderDashboard();
+        } else {
+          showToast(data.message || 'Thao tác không thành công', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi kết nối máy chủ', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+      }
+    }
+
+    // Fetch Partner Profile
+    async function fetchPartnerProfile(token) {
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && data.user) {
+          currentPartner = data.user;
+          renderDashboard();
+        } else {
+          localStorage.removeItem('cobe_partner_token');
+          showAuthView();
+        }
+      } catch (e) {
+        showAuthView();
+      }
+    }
+
+    // Render Dashboard
+    function renderDashboard() {
+      document.getElementById('authSection').style.display = 'none';
+      document.getElementById('dashboardSection').style.display = 'grid';
+      
+      const userSlot = document.getElementById('userNavSlot');
+      userSlot.style.display = 'flex';
+      document.getElementById('navPhoneBadge').textContent = currentPartner.phone;
+
+      // Subscription Status
+      const isSubActive = currentPartner.isActive;
+      const statusBadge = document.getElementById('subStatusBadge');
+      const statusText = document.getElementById('subStatusText');
+      const daysText = document.getElementById('daysRemainingText');
+      const expiryText = document.getElementById('expiryDateText');
+
+      if (isSubActive) {
+        statusBadge.className = 'status-badge active';
+        statusText.textContent = 'Đang kích hoạt';
+        daysText.textContent = `${currentPartner.daysRemaining} ngày`;
+        daysText.style.color = 'var(--accent-emerald)';
+        if (currentPartner.subscriptionExpiresAt) {
+          const d = new Date(currentPartner.subscriptionExpiresAt);
+          expiryText.textContent = `Hết hạn: ${d.toLocaleDateString('vi-VN')} ${d.toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})}`;
+        }
+      } else {
+        statusBadge.className = 'status-badge expired';
+        statusText.textContent = 'Hết hạn / Chưa kích hoạt';
+        daysText.textContent = '0 ngày';
+        daysText.style.color = 'var(--accent-rose)';
+        expiryText.textContent = 'Vui lòng gia hạn để sử dụng';
+      }
+
+      // Keys Vault
+      document.getElementById('displayApiKey').textContent = currentPartner.apiKey || '---';
+      isSecretVisible = false;
+      document.getElementById('displayApiSecret').textContent = '••••••••••••••••••••••••';
+      document.getElementById('displayApiSecret').style.letterSpacing = '2px';
+      const btnToggle = document.getElementById('btnToggleSecret');
+      btnToggle.title = 'Hiện Secret Key';
+      btnToggle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+
+      // Render Code Snippets
+      renderCodeSnippet();
+    }
+
+    function showAuthView() {
+      document.getElementById('authSection').style.display = 'block';
+      document.getElementById('dashboardSection').style.display = 'none';
+      document.getElementById('userNavSlot').style.display = 'none';
+    }
+
+    // Logout
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('cobe_partner_token');
+      currentPartner = null;
+      showAuthView();
+      showToast('Đã đăng xuất', 'info');
+    });
+
+    // Toggle Secret Key Visibility
+    function toggleApiSecretVisibility() {
+      if (!currentPartner) return;
+      isSecretVisible = !isSecretVisible;
+      const secretEl = document.getElementById('displayApiSecret');
+      const btn = document.getElementById('btnToggleSecret');
+
+      if (isSecretVisible) {
+        secretEl.textContent = currentPartner.apiSecret;
+        secretEl.style.letterSpacing = 'normal';
+        btn.title = 'Ẩn Secret Key';
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>`;
+      } else {
+        secretEl.textContent = '••••••••••••••••••••••••';
+        secretEl.style.letterSpacing = '2px';
+        btn.title = 'Hiện Secret Key';
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+      }
+    }
+
+    // Code Snippet Generator
+    function switchCodeLang(lang) {
+      currentCodeLang = lang;
+      document.querySelectorAll('.code-tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderCodeSnippet();
+    }
+
+    function renderCodeSnippet() {
+      const apiKey = currentPartner ? currentPartner.apiKey : 'cobe_pk_live_your_api_key';
+      const apiSecret = currentPartner ? currentPartner.apiSecret : 'cobe_sk_live_your_api_secret';
+      const origin = window.location.origin;
+      const codeArea = document.getElementById('codeDisplayArea');
+
+      let snippet = '';
+
+      if (currentCodeLang === 'python') {
+        snippet = `import time
+import uuid
+import hmac
+import hashlib
+import requests
+
+API_KEY = "${apiKey}"
+API_SECRET = "${apiSecret}"
+BASE_URL = "${origin}"
+
+def call_cobe_api(path):
+    timestamp = str(int(time.time() * 1000))
+    nonce = str(uuid.uuid4())
+    
+    # Chuẩn hóa HMAC string: METHOD:PATH:TIMESTAMP:NONCE
+    canonical = f"GET:{path.lower().rstrip('/')}:{timestamp}:{nonce}"
+    signature = hmac.new(
+        API_SECRET.encode('utf-8'),
+        canonical.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    headers = {
+        "x-api-key": API_KEY,
+        "x-timestamp": timestamp,
+        "x-nonce": nonce,
+        "x-signature": signature
+    }
+
+    res = requests.get(f"{BASE_URL}{path}", headers=headers)
+    return res.json()
+
+# Gọi thử tra cứu danh sách tồn kho
+print(call_cobe_api("/api/v1/products?limit=20"))`;
+      } else if (currentCodeLang === 'node') {
+        snippet = `const axios = require('axios');
+const crypto = require('crypto');
+
+const API_KEY = '${apiKey}';
+const API_SECRET = '${apiSecret}';
+const BASE_URL = '${origin}';
+
+async function fetchProducts() {
+  const timestamp = Date.now().toString();
+  const nonce = crypto.randomUUID();
+  const path = '/api/v1/products';
+
+  // Chuẩn hóa chuỗi ký số: METHOD:PATH:TIMESTAMP:NONCE
+  const canonical = \`GET:\${path.toLowerCase().replace(/\\/+$/, '')}:\${timestamp}:\${nonce}\`;
+  const signature = crypto.createHmac('sha256', API_SECRET).update(canonical).digest('hex');
+
+  const headers = {
+    'x-api-key': API_KEY,
+    'x-timestamp': timestamp,
+    'x-nonce': nonce,
+    'x-signature': signature
+  };
+
+  const response = await axios.get(\`\${BASE_URL}\${path}\`, { headers });
+  console.log('Tổng sản phẩm:', response.data.meta.total);
+  console.log(response.data.products);
+}
+
+fetchProducts();`;
+      } else if (currentCodeLang === 'curl') {
+        snippet = `# Lưu ý: Cần tạo HMAC-SHA256 trước khi gọi cURL
+TIMESTAMP=$(date +%s000)
+NONCE=$(uuidgen)
+PATH_URL="/api/v1/ping"
+CANONICAL="GET:$PATH_URL:$TIMESTAMP:$NONCE"
+SIGNATURE=$(echo -n "$CANONICAL" | openssl dgst -sha256 -hmac "${apiSecret}" | awk '{print $2}')
+
+curl -X GET "${origin}/api/v1/ping" \\
+  -H "x-api-key: ${apiKey}" \\
+  -H "x-timestamp: $TIMESTAMP" \\
+  -H "x-nonce: $NONCE" \\
+  -H "x-signature: $SIGNATURE"`;
+      } else if (currentCodeLang === 'php') {
+        snippet = `<?php
+$apiKey = '${apiKey}';
+$apiSecret = '${apiSecret}';
+$baseUrl = '${origin}';
+$path = '/api/v1/products';
+
+$timestamp = round(microtime(true) * 1000);
+$nonce = bin2hex(random_bytes(16));
+$canonical = "GET:" . strtolower(rtrim($path, '/')) . ":" . $timestamp . ":" . $nonce;
+$signature = hash_hmac('sha256', $canonical, $apiSecret);
+
+$ch = curl_init("$baseUrl$path");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "x-api-key: $apiKey",
+    "x-timestamp: $timestamp",
+    "x-nonce: $nonce",
+    "x-signature: $signature"
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+?>`;
+      }
+
+      codeArea.textContent = snippet;
+    }
+
+    // Live Ping Test Button
+    async function testLivePing() {
+      const btn = document.getElementById('btnTestPing');
+      btn.disabled = true;
+      btn.textContent = 'Đang kiểm tra...';
+
+      try {
+        const timestamp = Date.now().toString();
+        const nonce = 'ping_' + Math.random().toString(36).substring(2);
+        const path = '/api/v1/ping';
+        const canonical = `GET:${path}:${timestamp}:${nonce}`;
+
+        // Compute HMAC using SubtleCrypto in Browser
+        const encoder = new TextEncoder();
+        const keyData = encoder.encode(currentPartner.apiSecret);
+        const cryptoKey = await crypto.subtle.importKey(
+          'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+        );
+        const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(canonical));
+        const hashArray = Array.from(new Uint8Array(signatureBuffer));
+        const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        const res = await fetch('/api/v1/ping', {
+          headers: {
+            'x-api-key': currentPartner.apiKey,
+            'x-timestamp': timestamp,
+            'x-nonce': nonce,
+            'x-signature': signature
+          }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast(`✓ Xác thực thành công! Server time: ${new Date(data.serverTime).toLocaleTimeString('vi-VN')}`, 'success');
+        } else {
+          showToast(`⚠ Lỗi phản hồi: ${data.message || data.code}`, 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi tính toán HMAC: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg> Kiểm tra kết nối Live Ping`;
+      }
+    }
+
+    // Open Payment Modal (PayOS VietQR)
+    async function openPaymentModal() {
+      const modal = document.getElementById('paymentModal');
+      const loading = document.getElementById('payosLoading');
+      const content = document.getElementById('payosContent');
+      const errorAlert = document.getElementById('payosErrorAlert');
+
+      modal.classList.add('open');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+      errorAlert.style.display = 'none';
+
+      const token = localStorage.getItem('cobe_partner_token');
+      try {
+        const res = await fetch('/api/payment/create-payment-link', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentOrderCode = data.orderCode;
+          document.getElementById('payosOrderCode').textContent = `#${data.orderCode}`;
+          document.getElementById('payosAmountText').textContent = `${(data.amount || 100000).toLocaleString('vi-VN')} đ`;
+          document.getElementById('payosCheckoutLink').href = data.checkoutUrl;
+
+          // Render QR image (either from PayOS qrCode or VietQR generator)
+          const qrImg = document.getElementById('payosQrImg');
+          if (data.qrCode) {
+            qrImg.src = data.qrCode.startsWith('data:image') || data.qrCode.startsWith('http') 
+              ? data.qrCode 
+              : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(data.qrCode)}`;
+          } else {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(data.checkoutUrl)}`;
+          }
+
+          loading.style.display = 'none';
+          content.style.display = 'block';
+
+          // Start Polling Check
+          startPaymentPolling();
+        } else {
+          loading.style.display = 'none';
+          errorAlert.style.display = 'block';
+          document.getElementById('payosErrorMsg').textContent = data.message || 'Không thể tạo mã thanh toán PayOS.';
+        }
+      } catch (err) {
+        loading.style.display = 'none';
+        errorAlert.style.display = 'block';
+        document.getElementById('payosErrorMsg').textContent = 'Lỗi kết nối PayOS: ' + err.message;
+      }
+    }
+
+    function closePaymentModal() {
+      document.getElementById('paymentModal').classList.remove('open');
+      stopPaymentPolling();
+    }
+
+    let pollCount = 0;
+    const MAX_POLLS = 45; // 45 lượt x 4s = 180s (Đúng 3 phút tự ngắt an toàn chống treo & triệt tiêu 429)
+
+    function updatePollingStatusText(text, isTimeout = false) {
+      const el = document.getElementById('payosStatusText');
+      if (!el) return;
+      if (isTimeout) {
+        el.innerHTML = `<span style="color: var(--accent-amber); font-weight: 700;">⏱ ${text}</span>`;
+      } else {
+        el.innerHTML = `<span class="dot-pulse"></span> ${text}`;
+      }
+    }
+
+    // Polling Order Status (Nhịp 4s thông minh, tự động ngắt sau 3 phút chống 429 & tiết kiệm tài nguyên)
+    function startPaymentPolling() {
+      stopPaymentPolling();
+      pollCount = 0;
+      updatePollingStatusText('Đang chờ chuyển khoản...');
+      paymentPollTimer = setInterval(() => {
+        pollCount++;
+        if (pollCount > MAX_POLLS) {
+          stopPaymentPolling();
+          updatePollingStatusText('Hết giờ tự động (3p) — Nhấn "Kiểm tra ngay"', true);
+          return;
+        }
+        checkCurrentOrder(false);
+      }, 4000);
+    }
+
+    function stopPaymentPolling() {
+      if (paymentPollTimer) {
+        clearInterval(paymentPollTimer);
+        paymentPollTimer = null;
+      }
+      pollCount = 0;
+    }
+
+    async function checkCurrentOrder(isManual = false) {
+      if (!currentOrderCode) return;
+      const token = localStorage.getItem('cobe_partner_token');
+      try {
+        // Nếu người dùng chủ động bấm "Kiểm tra ngay", thêm ?force=true để server query trực tiếp PayOS
+        const url = isManual 
+          ? `/api/payment/check-order/${currentOrderCode}?force=true` 
+          : `/api/payment/check-order/${currentOrderCode}`;
+
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (data.success && data.paid) {
+          stopPaymentPolling();
+          closePaymentModal();
+
+          // Confetti Celebration
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+
+          showToast('🎉 Thanh toán thành công! Gói cước đã được cộng thêm 30 ngày.', 'success');
+
+          // Refresh user profile
+          fetchPartnerProfile(token);
+        } else if (isManual) {
+          showToast('Hệ thống chưa nhận được khoản thanh toán. Hãy thử lại sau vài giây.', 'info');
+        }
+      } catch (e) {
+        if (isManual) showToast('Lỗi kiểm tra trạng thái đơn hàng', 'error');
+      }
+    }
+  </script>
+</body>
+</html>
