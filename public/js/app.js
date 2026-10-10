@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeSize = 'all';
   let activeSort = 'default';
   let currentSearch = '';
+  let currentPage = 1;
+  let totalPages = 1;
+  let pageSize = 24;
+  let totalProductsCount = 0;
   let debounceTimer = null;
 
   // DOM Elements
@@ -35,6 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const statTotalStock = document.getElementById('statTotalStock');
   const toastEl = document.getElementById('toast');
   const toastText = document.getElementById('toastText');
+
+  // Pagination Elements
+  const paginationContainer = document.getElementById('paginationContainer');
+  const paginationNav = document.getElementById('paginationNav');
+  const pageRangeStart = document.getElementById('pageRangeStart');
+  const pageRangeEnd = document.getElementById('pageRangeEnd');
+  const pageTotalCount = document.getElementById('pageTotalCount');
+  const limitSelect = document.getElementById('limitSelect');
 
   // Lightbox Elements
   const imageLightbox = document.getElementById('imageLightbox');
@@ -78,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Search input with debounce
     searchInput.addEventListener('input', (e) => {
       currentSearch = e.target.value.trim();
+      currentPage = 1;
       btnClearSearch.style.display = currentSearch ? 'flex' : 'none';
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
@@ -88,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnClearSearch.addEventListener('click', () => {
       searchInput.value = '';
       currentSearch = '';
+      currentPage = 1;
       btnClearSearch.style.display = 'none';
       searchInput.focus();
       fetchProducts();
@@ -99,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const query = btn.dataset.query;
         searchInput.value = query;
         currentSearch = query;
+        currentPage = 1;
         btnClearSearch.style.display = 'flex';
         fetchProducts();
       });
@@ -114,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const val = e.target.value.trim();
         btnClearSize.style.display = val ? 'flex' : 'none';
         activeSize = val || 'all';
+        currentPage = 1;
 
         // Sync with quick size chips
         document.querySelectorAll('.size-chip').forEach(b => {
@@ -130,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sizeInput.value = '';
         btnClearSize.style.display = 'none';
         activeSize = 'all';
+        currentPage = 1;
         document.querySelectorAll('.size-chip').forEach(b => {
           b.classList.toggle('active', b.dataset.size === 'all');
         });
@@ -143,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => {
         const sizeVal = btn.dataset.size;
         activeSize = sizeVal;
+        currentPage = 1;
         if (sizeInput) {
           sizeInput.value = sizeVal === 'all' ? '' : sizeVal;
           if (btnClearSize) btnClearSize.style.display = sizeVal === 'all' ? 'none' : 'flex';
@@ -160,12 +178,14 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeStatus = btn.dataset.status;
+      currentPage = 1;
       fetchProducts();
     });
 
     // Sort dropdown
     sortSelect.addEventListener('change', (e) => {
       activeSort = e.target.value;
+      currentPage = 1;
       fetchProducts();
     });
 
@@ -178,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('active');
         activeBrand = btn.dataset.brand;
         activeCategory = 'all'; // Reset subcategory when brand changes
+        currentPage = 1;
         fetchProducts();
       });
     }
@@ -189,8 +210,35 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeCategory = btn.dataset.category;
+      currentPage = 1;
       fetchProducts();
     });
+
+    // Pagination nav button delegation
+    if (paginationNav) {
+      paginationNav.addEventListener('click', (e) => {
+        const btn = e.target.closest('.page-btn');
+        if (!btn || btn.disabled) return;
+        const targetPage = parseInt(btn.dataset.page, 10);
+        if (targetPage && targetPage !== currentPage && targetPage >= 1 && targetPage <= totalPages) {
+          currentPage = targetPage;
+          fetchProducts();
+          const anchor = document.getElementById('productsContainer');
+          if (anchor) {
+            anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      });
+    }
+
+    // Limit select change
+    if (limitSelect) {
+      limitSelect.addEventListener('change', (e) => {
+        pageSize = e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10);
+        currentPage = 1;
+        fetchProducts();
+      });
+    }
 
     // Toggle Light / Dark Mode directly
     if (btnThemeToggle) {
@@ -501,7 +549,9 @@ document.addEventListener('DOMContentLoaded', () => {
         status: activeStatus,
         category: activeCategory,
         size: activeSize,
-        sort: activeSort
+        sort: activeSort,
+        page: currentPage,
+        limit: pageSize
       });
 
       const res = await fetch(`/api/products?${params.toString()}`);
@@ -511,12 +561,18 @@ document.addEventListener('DOMContentLoaded', () => {
         allProducts = data.products || [];
         currentBrands = data.brands || [];
         currentCategories = data.categories || [];
+        currentPage = data.page || 1;
+        totalPages = data.totalPages || 1;
+        totalProductsCount = data.total || 0;
+
         updateBrandTabs(currentBrands);
         updateCategoryChips(currentCategories);
         renderProducts(allProducts);
         updateResultsCount(data.total);
+        renderPagination();
       } else {
         productsContainer.innerHTML = `<div class="empty-view"><p>Lỗi: ${data.message}</p></div>`;
+        if (paginationContainer) paginationContainer.style.display = 'none';
       }
     } catch (err) {
       console.error(err);
@@ -529,6 +585,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <p>Vui lòng kiểm tra lại đường truyền hoặc thử lại sau.</p>
         </div>
       `;
+      if (paginationContainer) paginationContainer.style.display = 'none';
     }
   }
 
@@ -609,7 +666,100 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentSearch) {
       text += ` khớp với "${currentSearch}"`;
     }
+    if (totalPages > 1 && pageSize !== 'all') {
+      text += ` • Trang ${currentPage}/${totalPages}`;
+    }
     resultsCount.textContent = text;
+  }
+
+  // Render Dynamic Pagination Bar
+  function renderPagination() {
+    if (!paginationContainer || !paginationNav) return;
+
+    if (totalProductsCount <= 0) {
+      paginationContainer.style.display = 'none';
+      return;
+    }
+
+    paginationContainer.style.display = 'flex';
+
+    // Update range info
+    if (pageTotalCount) pageTotalCount.textContent = totalProductsCount;
+    if (pageRangeStart && pageRangeEnd) {
+      if (pageSize === 'all') {
+        pageRangeStart.textContent = '1';
+        pageRangeEnd.textContent = totalProductsCount;
+      } else {
+        const start = (currentPage - 1) * pageSize + 1;
+        const end = Math.min(currentPage * pageSize, totalProductsCount);
+        pageRangeStart.textContent = start;
+        pageRangeEnd.textContent = end;
+      }
+    }
+
+    if (pageSize === 'all' || totalPages <= 1) {
+      paginationNav.innerHTML = '';
+      return;
+    }
+
+    // Build page buttons list
+    let html = '';
+
+    // Previous button
+    const prevDisabled = currentPage <= 1 ? 'disabled' : '';
+    html += `
+      <button class="page-btn" data-page="${currentPage - 1}" ${prevDisabled} title="Trang trước" aria-label="Trang trước">
+        ◀ Trước
+      </button>
+    `;
+
+    // Smart page numbers
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 4) {
+        pages.push('...');
+      }
+
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = start; i <= end; i++) {
+        if (!pages.includes(i)) pages.push(i);
+      }
+
+      if (currentPage < totalPages - 3) {
+        pages.push('...');
+      }
+      if (!pages.includes(totalPages)) {
+        pages.push(totalPages);
+      }
+    }
+
+    pages.forEach(p => {
+      if (p === '...') {
+        html += `<span class="page-ellipsis">...</span>`;
+      } else {
+        const activeClass = p === currentPage ? 'active' : '';
+        html += `
+          <button class="page-btn ${activeClass}" data-page="${p}" aria-label="Trang ${p}">
+            ${p}
+          </button>
+        `;
+      }
+    });
+
+    // Next button
+    const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+    html += `
+      <button class="page-btn" data-page="${currentPage + 1}" ${nextDisabled} title="Trang sau" aria-label="Trang sau">
+        Sau ▶
+      </button>
+    `;
+
+    paginationNav.innerHTML = html;
   }
 
   // Render Product Cards

@@ -71,7 +71,7 @@ function saveConfig(cfg) {
 
 // API: Get products with fuzzy search, filters, pagination
 app.get('/api/products', (req, res) => {
-  const { q = '', brand = 'all', category = 'all', status = 'all', size = 'all', sort = 'default' } = req.query;
+  const { q = '', brand = 'all', category = 'all', status = 'all', size = 'all', sort = 'default', page = 1, limit = 24 } = req.query;
   let products = getProducts();
 
   // Search filter
@@ -171,12 +171,28 @@ app.get('/api/products', (req, res) => {
     .sort((a, b) => b[1] - a[1])
     .map(([name, count]) => ({ name, count }));
 
+  // Pagination calculation
+  const total = products.length;
+  let pagedProducts = products;
+  let totalPages = 1;
+  const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+
+  if (limit !== 'all') {
+    const parsedLimit = Math.max(1, parseInt(limit, 10) || 24);
+    totalPages = Math.ceil(total / parsedLimit) || 1;
+    const startIndex = (parsedPage - 1) * parsedLimit;
+    pagedProducts = products.slice(startIndex, startIndex + parsedLimit);
+  }
+
   res.json({
     success: true,
-    total: products.length,
+    total,
+    page: parsedPage,
+    limit: limit === 'all' ? 'all' : (parseInt(limit, 10) || 24),
+    totalPages,
     brands,
     categories,
-    products
+    products: pagedProducts
   });
 });
 

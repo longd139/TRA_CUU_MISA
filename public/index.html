@@ -196,6 +196,25 @@
       <!-- Skeletons will be populated initially by JS -->
     </section>
 
+    <!-- Pagination Controls Bar -->
+    <nav class="pagination-section" id="paginationContainer" style="display: none;" aria-label="Phân trang sản phẩm">
+      <div class="pagination-info" id="paginationInfo">
+        Hiển thị <strong><span id="pageRangeStart">1</span> - <span id="pageRangeEnd">24</span></strong> / <strong><span id="pageTotalCount">0</span></strong> mẫu
+      </div>
+      <div class="pagination-nav" id="paginationNav">
+        <!-- Rendered dynamically: Prev, 1, 2, 3 ... Next -->
+      </div>
+      <div class="pagination-limit-control">
+        <label for="limitSelect" class="limit-label">Số mẫu:</label>
+        <select id="limitSelect" class="limit-select" aria-label="Số mẫu mỗi trang">
+          <option value="24" selected>24 / trang</option>
+          <option value="48">48 / trang</option>
+          <option value="96">96 / trang</option>
+          <option value="all">Tất cả</option>
+        </select>
+      </div>
+    </nav>
+
   </main>
 
   <!-- Image Lightbox Modal -->
