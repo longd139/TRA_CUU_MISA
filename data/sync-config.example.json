@@ -1,0 +1,14 @@
+{
+  "companyCode": "cobedenim",
+  "mshopkeeperDomain": "cobedenim.mshopkeeper.vn",
+  "branchId": "68d5c6a7-2ad8-44c8-b36c-58e095dd6ceb",
+  "branchName": "Kho cửa hàng cô bé denim",
+  "apiEndpoint": "https://cobedenim.mshopkeeper.vn/backendg2/api/instocks",
+  "syncIntervalMinutes": 120,
+  "autoSyncEnabled": true,
+  "adminPin": "1234",
+  "cachedToken": "",
+  "lastSyncTime": "",
+  "syncStatus": "READY",
+  "totalProducts": 0
+}

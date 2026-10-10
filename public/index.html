@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="denim">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cobe Denim — Tra Cứu Tồn Kho CTV & Đại Lý</title>
+  <meta name="description" content="Cổng tra cứu tồn kho tức thì theo mã, size, màu sắc cho CTV Cobe Denim kết nối MShopKeeper">
+  
+  <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Top App Navigation -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <div class="brand-monogram">CD</div>
+        <div class="brand-info">
+          <div class="brand-title">COBE DENIM</div>
+          <div class="brand-tagline">CTV STOCK DIRECTORY • TRA CỨU TỨC THÌ</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Toggle CTV Price -->
+        <button id="btnTogglePrice" class="action-btn" title="Ẩn/Hiện giá sỉ CTV">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span class="btn-label">Giá CTV</span>
+        </button>
+
+        <!-- Theme Switcher -->
+        <div class="theme-dropdown-wrap">
+          <button id="btnThemeToggle" class="action-btn" title="Đổi màu giao diện">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 3a9 9 0 0 1 0 18v-18z" fill="currentColor" fill-opacity="0.3"/>
+            </svg>
+            <span class="btn-label">Giao diện</span>
+          </button>
+          
+          <div id="themeMenu" class="theme-menu" style="display: none;">
+            <div class="theme-menu-header">Chọn phong cách màu</div>
+            <button class="theme-opt active" data-theme="denim">
+              <span class="swatch denim"></span>
+              <span class="opt-text">Denim Indigo (Gốc)</span>
+            </button>
+            <button class="theme-opt" data-theme="light">
+              <span class="swatch light"></span>
+              <span class="opt-text">Sáng Thanh Lịch</span>
+            </button>
+            <button class="theme-opt" data-theme="midnight">
+              <span class="swatch midnight"></span>
+              <span class="opt-text">Đen Midnight OLED</span>
+            </button>
+            <button class="theme-opt" data-theme="vintage">
+              <span class="swatch vintage"></span>
+              <span class="opt-text">Nâu Da Bò Retro</span>
+            </button>
+            <button class="theme-opt" data-theme="rose">
+              <span class="swatch rose"></span>
+              <span class="opt-text">Hồng Y2K Denim</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- MShopKeeper Sync Trigger -->
+        <button id="btnOpenSync" class="action-btn sync-btn" title="Quản lý đồng bộ MShopKeeper">
+          <svg class="svg-icon icon-spin-hover" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span class="btn-label">Đồng bộ</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Live Pulse Sub-Bar -->
+  <aside class="pulse-bar">
+    <div class="pulse-inner">
+      <div class="pulse-status">
+        <span class="live-dot"></span>
+        <span id="statusSyncText">Đang kết nối dữ liệu kho...</span>
+      </div>
+      <div class="pulse-metrics" id="statsMiniSummary">
+        <span class="metric-item"><strong id="statTotalModels">0</strong> mẫu</span>
+        <span class="metric-divider">/</span>
+        <span class="metric-item"><strong id="statTotalStock">0</strong> chiếc sẵn kho</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main View Area -->
+  <main class="page-body">
+    
+    <!-- Hero Search & Filter Hub -->
+    <section class="search-hub">
+      <div class="search-bar-frame">
+        <div class="search-field-wrap">
+          <svg class="search-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input 
+            type="text" 
+            id="searchInput" 
+            class="search-input" 
+            placeholder="Tìm theo mã SP (QJ-101, AK-201), tên mẫu, màu, size..."
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          >
+          <button id="btnClearSearch" class="btn-clear" style="display: none;" title="Xóa tìm kiếm">✕</button>
+        </div>
+      </div>
+
+      <!-- Quick Suggestion Tags -->
+      <div class="quick-chips-row">
+        <span class="chips-label">Tìm nhanh:</span>
+        <button class="chip-tag" data-query="Áo Polo">Áo Polo</button>
+        <button class="chip-tag" data-query="Áo Sơ Mi">Áo Sơ Mi</button>
+        <button class="chip-tag" data-query="Quần Kaki">Quần Kaki</button>
+        <button class="chip-tag" data-query="Quần Đùi">Quần Đùi</button>
+        <button class="chip-tag" data-query="Quần Bò">Quần Bò</button>
+        <button class="chip-tag" data-query="Áo Khoác">Áo Khoác</button>
+        <button class="chip-tag" data-query="Sịp Đùi">Sịp Đùi</button>
+        <button class="chip-tag" data-query="Phụ Kiện">Phụ Kiện</button>
+      </div>
+
+      <!-- Filter Controls: Status Tabs & Sort -->
+      <div class="control-strip">
+        <div class="segmented-control" id="statusTabs">
+          <button class="segment-btn active" data-status="all">Tất cả</button>
+          <button class="segment-btn" data-status="in_stock">🟢 Còn hàng</button>
+          <button class="segment-btn" data-status="low_stock">🟡 Sắp hết</button>
+          <button class="segment-btn" data-status="out_of_stock">🔴 Hết hàng</button>
+        </div>
+
+        <div class="sort-control">
+          <select id="sortSelect" class="sort-select" aria-label="Sắp xếp sản phẩm">
+            <option value="default">Sắp xếp: Mặc định</option>
+            <option value="stock_desc">Tồn kho nhiều nhất</option>
+            <option value="stock_asc">Tồn kho ít nhất</option>
+            <option value="price_asc">Giá bán tăng dần</option>
+            <option value="price_desc">Giá bán giảm dần</option>
+            <option value="name">Tên sản phẩm A-Z</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Brand Selection Bar -->
+      <div class="brand-strip">
+        <span class="strip-label">Thương hiệu:</span>
+        <div class="brand-scroll">
+          <div class="brand-pills" id="brandTabs">
+            <button class="brand-btn active" data-brand="all">Tất cả</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div class="category-strip">
+        <span class="strip-label">Nhóm hàng:</span>
+        <div class="category-scroll">
+          <div class="category-pills" id="categoryChips">
+            <button class="pill-btn active" data-category="all">Tất cả</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Indicator -->
+      <div class="results-meta">
+        <div class="results-text" id="resultsCount">Đang tải danh sách...</div>
+        <div class="quick-tip">
+          <svg class="tip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+          <span>Bấm mã để copy • Bấm ảnh để phóng to</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Products Gallery Grid -->
+    <section class="products-grid" id="productsContainer">
+      <!-- Skeletons will be populated initially by JS -->
+    </section>
+
+  </main>
+
+  <!-- Image Lightbox Modal -->
+  <div id="imageLightbox" class="lightbox-overlay" style="display: none;">
+    <div class="lightbox-scrim" id="lightboxBackdrop"></div>
+    <div class="lightbox-viewport">
+      <button class="lightbox-close-btn" id="btnCloseLightbox" title="Đóng cửa sổ">✕</button>
+      
+      <div class="lightbox-media">
+        <img id="lightboxImg" src="" alt="Hình ảnh sản phẩm Cobe Denim">
+      </div>
+
+      <div class="lightbox-details">
+        <div class="lightbox-header-row">
+          <div>
+            <span class="lightbox-sku-tag" id="lightboxSku">Mã: QJ-101</span>
+            <h3 id="lightboxTitle" class="lightbox-title">Tên sản phẩm</h3>
+          </div>
+        </div>
+        
+        <p id="lightboxDesc" class="lightbox-desc">Mô tả sản phẩm</p>
+        
+        <div class="lightbox-footer-actions">
+          <a id="btnDownloadImg" class="btn-action-primary" target="_blank" download>
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Tải ảnh về máy
+          </a>
+          <button id="btnCopySkuModal" class="btn-action-ghost">
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+            </svg>
+            Sao chép mã SP
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin / Sync Modal -->
+  <div id="syncModal" class="admin-overlay" style="display: none;">
+    <div class="admin-scrim" id="syncModalBackdrop"></div>
+    <div class="admin-dialog">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <div class="dialog-icon-badge">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="dialog-heading">Cấu Hình Đồng Bộ MShopKeeper</h2>
+            <div class="dialog-subheading">cobedenim.mshopkeeper.vn • Gói Starter</div>
+          </div>
+        </div>
+        <button class="dialog-close-btn" id="btnCloseSyncModal">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="sync-summary-card">
+          <div class="summary-line">
+            <span class="summary-label">Lần đồng bộ gần nhất:</span>
+            <span class="summary-val highlight" id="modalLastSyncTime">Chưa cập nhật</span>
+          </div>
+          <div class="summary-line">
+            <span class="summary-label">Số lượng sản phẩm:</span>
+            <span class="summary-val" id="modalTotalItems">8 mẫu</span>
+          </div>
+        </div>
+
+        <div class="tabs-nav">
+          <button class="nav-tab active" data-tab="direct-sync">1. Tự Động / API</button>
+          <button class="nav-tab" data-tab="bookmarklet-sync">2. Lấy Token 1-Click</button>
+          <button class="nav-tab" data-tab="excel-sync">3. Nạp File Excel MISA</button>
+        </div>
+
+        <!-- Tab 1: Direct / Auto Detect -->
+        <div class="tab-pane active" id="tab-direct-sync">
+          <p class="pane-text">Tự động phát hiện phiên đăng nhập MShopKeeper trên máy tính của bạn:</p>
+          <button id="btnAutoDetectToken" class="btn-primary-block" style="background: linear-gradient(135deg, #10b981, #059669); margin-bottom: 0.5rem;">
+            🔍 Tự Động Đọc Token Từ Chrome & Đồng Bộ
+          </button>
+          <button id="btnTriggerDemoSync" class="btn-primary-block">
+            ⚡ Làm Mới Dữ Liệu Kho Tức Thì
+          </button>
+          <div class="notice-callout">
+            <svg class="notice-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span><strong>Cơ chế tự động:</strong> Khi bạn đã đăng nhập vào <code>cobedenim.mshopkeeper.vn</code> trên Chrome, chỉ cần bấm nút xanh ở trên là hệ thống tự lấy token và cập nhật tồn kho mà không cần F12.</span>
+          </div>
+        </div>
+
+        <!-- Tab 2: Bookmarklet 1-Click & Token Manual -->
+        <div class="tab-pane" id="tab-bookmarklet-sync">
+          <p class="pane-text">Kéo nút bên dưới lên thanh Bookmark của trình duyệt (giống tool cũ của bạn):</p>
+          <div style="background: var(--bg-inset); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 0.75rem; text-align: center; margin-bottom: 0.75rem;">
+            <a 
+              id="bookmarkletLink"
+              href="javascript:(function(){let t='';try{const keys=['cobedenim_access_token','misa_common_access_token','access_token','token'];for(const k of keys){t=localStorage.getItem(k)||sessionStorage.getItem(k);if(t)break;}if(!t){for(let i=0;i<localStorage.length;i++){const v=localStorage.getItem(localStorage.key(i));if(v&&v.length>80&&v.includes('eyJ')){const m=v.match(/eyJ[a-zA-Z0-9._\-]{60,}/);if(m){t=m[0];break;}}}if(!t){for(let i=0;i<sessionStorage.length;i++){const v=sessionStorage.getItem(sessionStorage.key(i));if(v&&v.length>80&&v.includes('eyJ')){const m=v.match(/eyJ[a-zA-Z0-9._\-]{60,}/);if(m){t=m[0];break;}}}}}}catch(e){}if(t){t=t.replace(/^Bearer\s*/i,'').replace(/[^\w.\-]/g,'');if(navigator.clipboard){navigator.clipboard.writeText(t);}window.open('http://localhost:3000/#token='+encodeURIComponent(t),'_blank');}else{alert('Không tìm thấy token. Hãy đảm bảo bạn đang ở trang cobedenim.mshopkeeper.vn và đã đăng nhập!');}})();" 
+              class="action-btn" 
+              style="background: var(--accent-primary); color: #fff; padding: 0.6rem 1.1rem; display: inline-flex;"
+              onclick="event.preventDefault(); alert('👉 Bạn hãy KÉO nút này lên thanh Bookmark (Ctrl+Shift+B) của trình duyệt. Khi đang ở tab cobedenim.mshopkeeper.vn chỉ cần bấm bookmark là xong!');"
+            >
+              ⭐ Kéo vào Bookmark: Lấy Token Cobe Denim
+            </a>
+            <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-top: 0.4rem;">
+              Đang mở mshopkeeper → Bấm Bookmark → Tự động nhảy về trang này với token điền sẵn!
+            </div>
+          </div>
+
+          <div class="input-block">
+            <label for="tokenInput" class="input-label">Hoặc dán Bearer Token vào đây:</label>
+            <textarea id="tokenInput" class="input-textarea" rows="3" placeholder="Bearer eyJhbGciOi..."></textarea>
+          </div>
+          <button id="btnTriggerTokenSync" class="btn-primary-block" style="margin-top: 0.5rem;">
+            🔗 Kết Nối & Đồng Bộ Bằng Token Này
+          </button>
+        </div>
+
+        <!-- Tab 3: Excel Drag & Drop -->
+        <div class="tab-pane" id="tab-excel-sync">
+          <p class="pane-text">Kéo thả file Excel báo cáo tồn kho MISA (hoặc bấm để chọn file):</p>
+          
+          <div id="excelDropZone" class="excel-drop-zone">
+            <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;">
+            <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+            <div class="drop-prompt"><strong>Kéo thả file .xlsx vào đây</strong> hoặc bấm để tải lên</div>
+            <div class="drop-hint">Tự động bóc tách Mã SP, Tên, Màu, Size và Tồn kho</div>
+          </div>
+
+          <div class="input-block" style="margin-top: 0.75rem;">
+            <label for="jsonImportInput" class="input-label">Hoặc dán JSON dự phòng:</label>
+            <textarea id="jsonImportInput" class="input-textarea" rows="2" placeholder='[ { "sku": "...", "name": "...", "variants": [...] } ]'></textarea>
+          </div>
+          <button id="btnImportJson" class="btn-primary-block" style="margin-top: 0.5rem;">
+            📥 Cập Nhật Bằng Dữ Liệu Này
+          </button>
+        </div>
+
+        <div id="syncFeedback" class="feedback-banner" style="display: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Toast -->
+  <div id="toast" class="toast-pill">
+    <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    <span id="toastText">Đã sao chép!</span>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

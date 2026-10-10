@@ -1,0 +1,11 @@
+node_modules/
+.env
+.DS_Store
+*.log
+data/sync-config.json
+scratch/
+scratch_*
+__pycache__/
+downloads/
+*.xlsx
+.agents/
