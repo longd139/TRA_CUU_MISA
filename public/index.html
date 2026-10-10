@@ -79,12 +79,49 @@
             type="text" 
             id="searchInput" 
             class="search-input" 
-            placeholder="Tìm theo mã SP (QJ-101, AK-201), tên mẫu, màu, size..."
+            placeholder="Tìm theo mã SP (QJ-101, AK-201), tên mẫu, màu..."
             autocomplete="off"
             autocorrect="off"
             spellcheck="false"
           >
           <button id="btnClearSearch" class="btn-clear" style="display: none;" title="Xóa tìm kiếm">✕</button>
+        </div>
+
+        <!-- Dedicated Size Filter Dropdown directly beside the input -->
+        <div class="search-size-select-wrap">
+          <svg class="size-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 8H3m18 8H3M7 4v16m10-16v16"/>
+          </svg>
+          <select id="sizeFilterSelect" class="search-size-select" aria-label="Tìm theo Size">
+            <option value="all">📏 Tất cả Size</option>
+            <optgroup label="Áo / Đồ lót (Chữ)">
+              <option value="XS">Size XS</option>
+              <option value="S">Size S</option>
+              <option value="M">Size M</option>
+              <option value="L">Size L</option>
+              <option value="XL">Size XL</option>
+              <option value="XXL">Size XXL</option>
+              <option value="FREESIZE">Freesize</option>
+            </optgroup>
+            <optgroup label="Quần (Size số)">
+              <option value="28">Size 28</option>
+              <option value="29">Size 29</option>
+              <option value="30">Size 30</option>
+              <option value="31">Size 31</option>
+              <option value="32">Size 32</option>
+              <option value="33">Size 33</option>
+              <option value="34">Size 34</option>
+              <option value="36">Size 36</option>
+            </optgroup>
+            <optgroup label="Giày / Dép">
+              <option value="39">Size 39</option>
+              <option value="40">Size 40</option>
+              <option value="41">Size 41</option>
+              <option value="42">Size 42</option>
+              <option value="43">Size 43</option>
+              <option value="44">Size 44</option>
+            </optgroup>
+          </select>
         </div>
       </div>
 
@@ -99,6 +136,26 @@
         <button class="chip-tag" data-query="Áo Khoác">Áo Khoác</button>
         <button class="chip-tag" data-query="Sịp Đùi">Sịp Đùi</button>
         <button class="chip-tag" data-query="Phụ Kiện">Phụ Kiện</button>
+      </div>
+
+      <!-- Quick Size Pills for 1-touch filtering -->
+      <div class="quick-chips-row size-chips-row">
+        <span class="chips-label">Lọc Size:</span>
+        <button class="size-chip active" data-size="all">Tất cả</button>
+        <button class="size-chip" data-size="S">S</button>
+        <button class="size-chip" data-size="M">M</button>
+        <button class="size-chip" data-size="L">L</button>
+        <button class="size-chip" data-size="XL">XL</button>
+        <button class="size-chip" data-size="XXL">XXL</button>
+        <span class="chip-divider">|</span>
+        <button class="size-chip" data-size="28">28</button>
+        <button class="size-chip" data-size="29">29</button>
+        <button class="size-chip" data-size="30">30</button>
+        <button class="size-chip" data-size="31">31</button>
+        <button class="size-chip" data-size="32">32</button>
+        <button class="size-chip" data-size="33">33</button>
+        <button class="size-chip" data-size="34">34</button>
+        <button class="size-chip" data-size="36">36</button>
       </div>
 
       <!-- Filter Controls: Status Tabs & Sort -->

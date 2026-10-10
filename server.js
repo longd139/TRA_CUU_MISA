@@ -71,13 +71,14 @@ function saveConfig(cfg) {
 
 // API: Get products with fuzzy search, filters, pagination
 app.get('/api/products', (req, res) => {
-  const { q = '', brand = 'all', category = 'all', status = 'all', sort = 'default' } = req.query;
+  const { q = '', brand = 'all', category = 'all', status = 'all', size = 'all', sort = 'default' } = req.query;
   let products = getProducts();
 
   // Search filter
   if (q.trim()) {
     const rawQuery = q.trim().toLowerCase();
     const queryNormalized = removeVietnameseTones(rawQuery);
+    const sizeQuery = rawQuery.replace(/^(?:size|sz)\s+/i, '').trim();
 
     products = products.filter(p => {
       const skuNorm = (p.sku || '').toLowerCase();
@@ -97,7 +98,22 @@ app.get('/api/products', (req, res) => {
         const colorNorm = removeVietnameseTones(v.color || '');
         const sizeNorm = (v.size || '').toLowerCase();
         const skuVNorm = (v.skuVariant || '').toLowerCase();
-        return colorNorm.includes(queryNormalized) || sizeNorm === rawQuery || skuVNorm.includes(rawQuery);
+        return colorNorm.includes(queryNormalized) || sizeNorm === rawQuery || (sizeQuery && sizeNorm === sizeQuery) || skuVNorm.includes(rawQuery);
+      });
+    });
+  }
+
+  // Size filter
+  if (size && size !== 'all') {
+    const targetSize = size.toUpperCase().trim();
+    products = products.filter(p => {
+      return (p.variants || []).some(v => {
+        const vSize = String(v.size || '').toUpperCase().trim();
+        const hasStock = Number(v.stock) > 0;
+        if (status === 'out_of_stock') {
+          return vSize === targetSize;
+        }
+        return vSize === targetSize && hasStock;
       });
     });
   }

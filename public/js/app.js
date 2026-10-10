@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeStatus = 'all';
   let activeBrand = 'all';
   let activeCategory = 'all';
+  let activeSize = 'all';
   let activeSort = 'default';
   let currentSearch = '';
   let debounceTimer = null;
@@ -99,6 +100,31 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.value = query;
         currentSearch = query;
         btnClearSearch.style.display = 'flex';
+        fetchProducts();
+      });
+    });
+
+    // Dedicated Size Filter Select beside search input
+    const sizeFilterSelect = document.getElementById('sizeFilterSelect');
+    if (sizeFilterSelect) {
+      sizeFilterSelect.addEventListener('change', (e) => {
+        activeSize = e.target.value;
+        // Sync quick size chips
+        document.querySelectorAll('.size-chip').forEach(b => {
+          b.classList.toggle('active', b.dataset.size.toUpperCase() === activeSize.toUpperCase());
+        });
+        fetchProducts();
+      });
+    }
+
+    // Quick Size Pills click delegation
+    document.querySelectorAll('.size-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sizeVal = btn.dataset.size;
+        activeSize = sizeVal;
+        if (sizeFilterSelect) sizeFilterSelect.value = sizeVal;
+        document.querySelectorAll('.size-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         fetchProducts();
       });
     });
@@ -450,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         brand: activeBrand,
         status: activeStatus,
         category: activeCategory,
+        size: activeSize,
         sort: activeSort
       });
 
@@ -551,11 +578,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateResultsCount(count) {
-    if (currentSearch) {
-      resultsCount.textContent = `Tìm thấy ${count} mẫu khớp với "${currentSearch}"`;
-    } else {
-      resultsCount.textContent = `Hiển thị ${count} mẫu trong kho`;
+    let text = `Hiển thị ${count} mẫu`;
+    if (activeSize !== 'all') {
+      text += ` (Size ${activeSize})`;
     }
+    if (currentSearch) {
+      text += ` khớp với "${currentSearch}"`;
+    }
+    resultsCount.textContent = text;
   }
 
   // Render Product Cards
@@ -598,12 +628,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let sizePillsHtml = '';
         if (inStockSizes.length > 0) {
-          sizePillsHtml = inStockSizes.map(v => `
-            <div class="size-pill in-stock" title="Size ${v.size}: Còn ${v.stock} chiếc">
-              <span>${v.size}</span>
-              <span class="qty-number">${v.stock}</span>
-            </div>
-          `).join('');
+          sizePillsHtml = inStockSizes.map(v => {
+            const isTarget = activeSize !== 'all' && String(v.size || '').toUpperCase().trim() === activeSize.toUpperCase().trim();
+            const targetClass = isTarget ? 'active-target-size' : '';
+            return `
+              <div class="size-pill in-stock ${targetClass}" title="Size ${v.size}: Còn ${v.stock} chiếc">
+                <span>${v.size}</span>
+                <span class="qty-number">${v.stock}</span>
+              </div>
+            `;
+          }).join('');
         } else {
           sizePillsHtml = `<span class="out-stock-label">🔴 Hết hàng</span>`;
         }
