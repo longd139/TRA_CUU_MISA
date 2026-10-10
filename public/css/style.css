@@ -953,6 +953,26 @@ body {
   color: #be123c;
 }
 
+/* Out of Stock Label */
+.out-stock-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--stock-rose);
+  background: var(--stock-rose-bg);
+  border: 1px solid var(--stock-rose-border);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+[data-theme="light"] .out-stock-label {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #e11d48;
+}
+
 /* Light Theme Badges: Clear contrast */
 [data-theme="light"] .badge-count {
   background: rgba(0, 0, 0, 0.06);

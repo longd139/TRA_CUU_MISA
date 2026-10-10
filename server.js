@@ -40,9 +40,7 @@ function getProducts() {
     const products = JSON.parse(raw);
     return products.map(p => {
       const totalStock = (p.variants || []).reduce((acc, v) => acc + (Number(v.stock) || 0), 0);
-      let status = 'in_stock';
-      if (totalStock === 0) status = 'out_of_stock';
-      else if (totalStock <= 5 || (p.variants || []).some(v => v.stock > 0 && v.stock <= 2)) status = 'low_stock';
+      const status = totalStock > 0 ? 'in_stock' : 'out_of_stock';
       return { ...p, totalStock, status };
     });
   } catch (err) {
@@ -194,17 +192,15 @@ app.get('/api/stats', (req, res) => {
   const config = getConfig();
 
   const totalProducts = products.length;
-  const totalStockQuantity = products.reduce((acc, p) => acc + p.totalStock, 0);
-  const outOfStockCount = products.filter(p => p.totalStock === 0).length;
-  const lowStockCount = products.filter(p => p.status === 'low_stock').length;
-  const inStockCount = products.filter(p => p.status === 'in_stock').length;
+  const totalStockQuantity = products.reduce((acc, p) => acc + (Number(p.totalStock) || 0), 0);
+  const outOfStockCount = products.filter(p => (Number(p.totalStock) || 0) <= 0).length;
+  const inStockCount = products.filter(p => (Number(p.totalStock) || 0) > 0).length;
 
   res.json({
     success: true,
     totalProducts,
     totalStockQuantity,
     inStockCount,
-    lowStockCount,
     outOfStockCount,
     lastSyncTime: config.lastSyncTime || new Date().toISOString(),
     companyCode: config.companyCode || 'cobedenim'
@@ -850,7 +846,7 @@ async function performSyncFromMShopKeeper(token, branchId) {
             updatedAt: new Date().toISOString(),
             variants,
             totalStock: cardTotalStock,
-            status: cardTotalStock <= 0 ? 'out_of_stock' : cardTotalStock <= 5 ? 'low_stock' : 'in_stock'
+            status: cardTotalStock <= 0 ? 'out_of_stock' : 'in_stock'
           });
         }
       } else {
@@ -888,7 +884,7 @@ async function performSyncFromMShopKeeper(token, branchId) {
           updatedAt: new Date().toISOString(),
           variants,
           totalStock: parentStock,
-          status: parentStock === 0 ? 'out_of_stock' : parentStock <= 5 ? 'low_stock' : 'in_stock'
+          status: parentStock <= 0 ? 'out_of_stock' : 'in_stock'
         });
       }
     }

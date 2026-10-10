@@ -582,38 +582,31 @@ document.addEventListener('DOMContentLoaded', () => {
         colorGroups[color].push(v);
       });
 
-      // Stock status label
-      let stockHeadlineText = `Tổng tồn: ${product.totalStock} chiếc`;
-      let stockHeadlineClass = product.status;
-      if (product.totalStock === 0) {
-        stockHeadlineText = `🔴 Hết hàng toàn bộ`;
-      } else if (product.status === 'low_stock') {
-        stockHeadlineText = `🟡 Sắp hết (${product.totalStock} chiếc)`;
-      } else {
-        stockHeadlineText = `🟢 Sẵn kho ${product.totalStock} chiếc`;
-      }
+      // Stock status label (Only 2 states: in_stock vs out_of_stock)
+      const isAvailable = Number(product.totalStock) > 0;
+      const stockHeadlineClass = isAvailable ? 'in_stock' : 'out_of_stock';
+      const stockHeadlineText = isAvailable 
+        ? `🟢 Còn hàng (${product.totalStock} chiếc)`
+        : `🔴 Hết hàng`;
 
       const retailPriceFmt = new Intl.NumberFormat('vi-VN').format(product.retailPrice) + 'đ';
 
-      // Colors & Sizes HTML
+      // Colors & Sizes HTML (Hide sizes that are out of stock)
       const matrixHtml = Object.keys(colorGroups).map(color => {
         const sizes = colorGroups[color];
-        const sizePillsHtml = sizes.map(v => {
-          let pillClass = 'in-stock';
-          let displayQty = v.stock;
-          if (v.stock <= 0) {
-            pillClass = 'out-stock';
-            displayQty = '0';
-          } else if (v.stock <= 2) {
-            pillClass = 'low-stock';
-          }
-          return `
-            <div class="size-pill ${pillClass}" title="Size ${v.size}: Còn ${v.stock} chiếc">
+        const inStockSizes = sizes.filter(v => Number(v.stock) > 0);
+
+        let sizePillsHtml = '';
+        if (inStockSizes.length > 0) {
+          sizePillsHtml = inStockSizes.map(v => `
+            <div class="size-pill in-stock" title="Size ${v.size}: Còn ${v.stock} chiếc">
               <span>${v.size}</span>
-              <span class="qty-number">${displayQty}</span>
+              <span class="qty-number">${v.stock}</span>
             </div>
-          `;
-        }).join('');
+          `).join('');
+        } else {
+          sizePillsHtml = `<span class="out-stock-label">🔴 Hết hàng</span>`;
+        }
 
         return `
           <div class="color-row-card">
@@ -731,11 +724,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     Object.keys(colorGroups).forEach(color => {
-      const sizeStrs = colorGroups[color].map(v => {
-        if (v.stock === 0) return `${v.size}: Hết`;
-        return `${v.size}: còn ${v.stock}`;
-      });
-      lines.push(`• ${color}: [${sizeStrs.join(', ')}]`);
+      const inStockSizes = colorGroups[color].filter(v => Number(v.stock) > 0);
+      if (inStockSizes.length > 0) {
+        const sizeStrs = inStockSizes.map(v => `${v.size}: còn ${v.stock}`);
+        lines.push(`• ${color}: [${sizeStrs.join(', ')}]`);
+      } else {
+        lines.push(`• ${color}: [Hết hàng]`);
+      }
     });
 
     const fullMessage = lines.join('\n');
