@@ -783,16 +783,19 @@ async function performSyncFromMShopKeeper(token, branchId) {
         });
 
         const totalColors = byColor.size;
-
         for (const [colorName, childList] of byColor.entries()) {
           const first = childList[0];
-          const picId = first.PictureID && first.PictureID !== '00000000-0000-0000-0000-000000000000'
-            ? first.PictureID
-            : master.PictureID && master.PictureID !== '00000000-0000-0000-0000-000000000000'
-              ? master.PictureID
-              : null;
+          // Find child with valid PictureID in this color group
+          const childWithPic = childList.find(c => c.PictureID && c.PictureID !== '00000000-0000-0000-0000-000000000000');
+          const hasChildPic = !!childWithPic;
+          const picId = hasChildPic
+            ? childWithPic.PictureID
+            : (master.PictureID && master.PictureID !== '00000000-0000-0000-0000-000000000000' ? master.PictureID : null);
 
           if (picId) picCount++;
+
+          const rawExt = (hasChildPic ? childWithPic.Extension : master.Extension) || '.jpg';
+          const cleanExt = rawExt.startsWith('.') ? rawExt : ('.' + rawExt);
 
           const retailPrice = Number(first.UnitPrice) > 0
             ? Number(first.UnitPrice)
@@ -801,7 +804,7 @@ async function performSyncFromMShopKeeper(token, branchId) {
               : 350000;
 
           const imgUrl = picId
-            ? `https://cobedenim.mshopkeeper.vn/backendg2/api/Image?id=${picId}.jpg&type=1&mode=pad&CompanyCode=cobedenim`
+            ? `https://cobedenim.mshopkeeper.vn/backendg2/api/Image?id=${picId}${cleanExt}&type=1&mode=pad&CompanyCode=cobedenim`
             : getCategoryPlaceholder(cat, master.InventoryItemName);
 
           const displayName = totalColors > 1 && colorName !== 'Tiêu chuẩn'
@@ -854,9 +857,12 @@ async function performSyncFromMShopKeeper(token, branchId) {
         const picId = master.PictureID && master.PictureID !== '00000000-0000-0000-0000-000000000000' ? master.PictureID : null;
         if (picId) picCount++;
 
+        const rawExt = master.Extension || '.jpg';
+        const cleanExt = rawExt.startsWith('.') ? rawExt : ('.' + rawExt);
+
         const retailPrice = Number(master.UnitPrice) > 0 ? Number(master.UnitPrice) : 350000;
         const imgUrl = picId
-          ? `https://cobedenim.mshopkeeper.vn/backendg2/api/Image?id=${picId}.jpg&type=1&mode=pad&CompanyCode=cobedenim`
+          ? `https://cobedenim.mshopkeeper.vn/backendg2/api/Image?id=${picId}${cleanExt}&type=1&mode=pad&CompanyCode=cobedenim`
           : getCategoryPlaceholder(cat, master.InventoryItemName);
 
         const sizes = master.Size ? master.Size.split(',').map(x => x.trim().toUpperCase()) : ['FREESIZE'];

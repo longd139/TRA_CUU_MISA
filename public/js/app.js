@@ -632,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 src="${product.imageUrl}" 
                 alt="${product.name}" 
                 loading="lazy"
-                onerror="this.src='https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=400&q=80'"
+                onerror="if(!this.dataset.tried){this.dataset.tried='1';if(this.src.includes('.png'))this.src=this.src.replace('.png','.jpg');else if(this.src.includes('.jpg'))this.src=this.src.replace('.jpg','.png');}else{this.src='https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=400&q=80';}"
               >
               <div class="zoom-overlay-badge">
                 <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5">
