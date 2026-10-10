@@ -609,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sizePillsHtml = sizes.map(v => {
           let pillClass = 'in-stock';
           let displayQty = v.stock;
-          if (v.stock === 0) {
+          if (v.stock <= 0) {
             pillClass = 'out-stock';
             displayQty = '0';
           } else if (v.stock <= 2) {
