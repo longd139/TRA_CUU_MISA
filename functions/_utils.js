@@ -31,9 +31,14 @@ export function isBotOrScraper(request) {
   return knownScrapers.some(bot => ua.includes(bot));
 }
 
-// Helper: Fetch products from ASSETS CDN
+// Helper: Fetch products from INVENTORY_KV or ASSETS CDN
 let cachedProducts = null;
 let lastProductsFetch = 0;
+
+export function setCachedProducts(products) {
+  cachedProducts = products;
+  lastProductsFetch = Date.now();
+}
 
 export async function getProductsData(context) {
   const now = Date.now();
@@ -42,6 +47,21 @@ export async function getProductsData(context) {
     return cachedProducts;
   }
 
+  // 1. Try reading live synced data from Cloudflare KV
+  if (context && context.env && context.env.INVENTORY_KV) {
+    try {
+      const kvData = await context.env.INVENTORY_KV.get('products', 'json');
+      if (Array.isArray(kvData) && kvData.length > 0) {
+        cachedProducts = kvData;
+        lastProductsFetch = now;
+        return cachedProducts;
+      }
+    } catch (e) {
+      console.warn('Lỗi đọc INVENTORY_KV:', e);
+    }
+  }
+
+  // 2. Fallback to static baseline products from ASSETS
   try {
     const assetUrl = new URL('/data/products.json', context.request.url);
     const res = await context.env.ASSETS.fetch(assetUrl);

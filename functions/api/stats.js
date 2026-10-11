@@ -15,7 +15,13 @@ export async function onRequestGet(context) {
     }
   });
 
-  const lastSyncTime = products[0]?.updatedAt || new Date().toISOString();
+  let lastSyncTime = products[0]?.updatedAt || new Date().toISOString();
+  if (context && context.env && context.env.INVENTORY_KV) {
+    try {
+      const kvTime = await context.env.INVENTORY_KV.get('lastSyncTime');
+      if (kvTime) lastSyncTime = kvTime;
+    } catch (e) {}
+  }
 
   return jsonResponse({
     success: true,

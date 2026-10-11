@@ -333,6 +333,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // Dynamic Bookmarklet Generator (Points directly to current domain/origin)
+    const bookmarkletLink = document.getElementById('bookmarkletLink');
+    if (bookmarkletLink) {
+      const targetOrigin = window.location.origin;
+      const bmCode = `javascript:(function(){let t='';try{const keys=['cobedenim_access_token','misa_common_access_token','access_token','token'];for(const k of keys){t=localStorage.getItem(k)||sessionStorage.getItem(k);if(t)break;}if(!t){for(let i=0;i<localStorage.length;i++){const v=localStorage.getItem(localStorage.key(i));if(v&&v.length>80&&v.includes('eyJ')){const m=v.match(/eyJ[a-zA-Z0-9._\\-]{60,}/);if(m){t=m[0];break;}}}if(!t){for(let i=0;i<sessionStorage.length;i++){const v=sessionStorage.getItem(sessionStorage.key(i));if(v&&v.length>80&&v.includes('eyJ')){const m=v.match(/eyJ[a-zA-Z0-9._\\-]{60,}/);if(m){t=m[0];break;}}}}}}catch(e){}if(t){t=t.replace(/^Bearer\\s*/i,'').replace(/[^\\w.\\-]/g,'');if(navigator.clipboard){navigator.clipboard.writeText(t);}window.open('${targetOrigin}/#token='+encodeURIComponent(t),'_blank');}else{alert('Không tìm thấy token. Hãy đảm bảo bạn đang ở tab cobedenim.mshopkeeper.vn và đã đăng nhập!');}})();`;
+      bookmarkletLink.setAttribute('href', bmCode);
+    }
+
     // Auto-fill token from URL hash (Bookmarklet 1-click support)
     if (window.location.hash && window.location.hash.startsWith('#token=')) {
       const incomingToken = decodeURIComponent(window.location.hash.replace('#token=', ''));
@@ -436,16 +444,18 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.readAsDataURL(file);
     }
 
-    // Trigger Token Sync
+    // Trigger Token Sync (Đồng bộ trực tiếp qua Web hoặc máy trạm)
     btnTriggerTokenSync.addEventListener('click', async () => {
-      const token = tokenInput.value.trim();
+      let token = tokenInput.value.trim();
       if (!token) {
-        showSyncFeedback('Vui lòng dán Access Token vào ô trên', 'error');
+        showSyncFeedback('Vui lòng dán Access Token MShopKeeper vào ô trên', 'error');
         return;
       }
+      token = token.replace(/^Bearer\s+/i, '').trim();
       btnTriggerTokenSync.disabled = true;
-      btnTriggerTokenSync.textContent = '⏳ Đang đồng bộ từ MShopKeeper...';
-      startProgressPolling('sync');
+      btnTriggerTokenSync.textContent = '⏳ Đang kết nối MShopKeeper & đồng bộ...';
+      hideSyncFeedback();
+
       try {
         const res = await fetch('/api/sync/mshopkeeper', {
           method: 'POST',
@@ -459,13 +469,13 @@ document.addEventListener('DOMContentLoaded', () => {
           await fetchProducts();
           showToast('Đã đồng bộ kho MShopKeeper thành công!');
         } else {
-          showSyncFeedback(data.message, 'error');
+          showSyncFeedback(data.message || 'Lỗi đồng bộ từ MShopKeeper', 'error');
         }
       } catch (err) {
-        showSyncFeedback('Lỗi kết nối máy chủ: ' + err.message, 'error');
+        showSyncFeedback('Lỗi kết nối: ' + err.message, 'error');
       } finally {
         btnTriggerTokenSync.disabled = false;
-        btnTriggerTokenSync.textContent = '🔗 Kết Nối & Đồng Bộ Bằng Token Này';
+        btnTriggerTokenSync.textContent = '⚡ Bắt Đầu Đồng Bộ Tồn Kho Ngay';
       }
     });
 

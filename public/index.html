@@ -324,54 +324,56 @@
         </div>
 
         <div class="tabs-nav">
-          <button class="nav-tab active" data-tab="direct-sync">1. Tự Động / API</button>
-          <button class="nav-tab" data-tab="bookmarklet-sync">2. Lấy Token 1-Click</button>
+          <button class="nav-tab active" data-tab="direct-sync">1. Đồng Bộ Web (Dùng Token)</button>
+          <button class="nav-tab" data-tab="local-sync">2. Laptop Cửa Hàng</button>
           <button class="nav-tab" data-tab="excel-sync">3. Nạp File Excel MISA</button>
           <button class="nav-tab" data-tab="images-sync">4. Đồng Bộ Ảnh Thật</button>
         </div>
 
-        <!-- Tab 1: Direct / Auto Detect -->
+        <!-- Tab 1: Web Direct Sync with Token (Works 100% on Cloudflare without laptop) -->
         <div class="tab-pane active" id="tab-direct-sync">
-          <p class="pane-text">Tự động phát hiện phiên đăng nhập MShopKeeper trên máy tính của bạn:</p>
-          <button id="btnAutoDetectToken" class="btn-primary-block" style="background: linear-gradient(135deg, #10b981, #059669); margin-bottom: 0.5rem;">
+          <p class="pane-text">Đồng bộ tồn kho trực tiếp từ MShopKeeper MISA mọi lúc mọi nơi ngay trên trình duyệt (không cần mở máy tính cửa hàng):</p>
+          
+          <div class="input-block">
+            <label for="tokenInput" class="input-label">Dán Access Token MShopKeeper vào đây:</label>
+            <textarea id="tokenInput" class="input-textarea" rows="3" placeholder="Dán Bearer eyJ... hoặc token lấy từ tab MShopKeeper vào đây..."></textarea>
+          </div>
+
+          <button id="btnTriggerTokenSync" class="btn-primary-block" style="background: linear-gradient(135deg, #10b981, #059669); margin-top: 0.5rem; font-weight: 600;">
+            ⚡ Bắt Đầu Đồng Bộ Tồn Kho Ngay
+          </button>
+
+          <div style="background: var(--bg-inset); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 0.75rem; text-align: center; margin-top: 0.85rem;">
+            <a 
+              id="bookmarkletLink"
+              href="javascript:void(0);" 
+              class="action-btn" 
+              style="background: var(--accent-primary); color: #fff; padding: 0.55rem 1rem; display: inline-flex;"
+              onclick="event.preventDefault(); alert('👉 Bạn hãy KÉO nút này lên thanh Bookmark (Ctrl+Shift+B) của trình duyệt. Khi đang ở tab cobedenim.mshopkeeper.vn chỉ cần bấm bookmark là xong!');"
+            >
+              ⭐ Kéo vào Bookmark: Lấy Token 1-Click
+            </a>
+            <div style="font-size: 0.72rem; color: var(--text-tertiary); margin-top: 0.4rem;">
+              Đang ở tab mshopkeeper → Bấm Bookmark → Tự động nhảy về trang này & đồng bộ tồn kho ngay lập tức!
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Local Laptop Auto Detect -->
+        <div class="tab-pane" id="tab-local-sync">
+          <p class="pane-text">Dành riêng cho máy tính cửa hàng đang chạy server local Node.js:</p>
+          <button id="btnAutoDetectToken" class="btn-primary-block" style="background: linear-gradient(135deg, #6366f1, #4f46e5); margin-bottom: 0.5rem;">
             🔍 Tự Động Đọc Token Từ Chrome & Đồng Bộ
           </button>
           <button id="btnTriggerDemoSync" class="btn-primary-block">
-            ⚡ Làm Mới Dữ Liệu Kho Tức Thì
+            ⚡ Làm Mới Dữ Liệu Kho Bằng Token Đã Lưu
           </button>
           <div class="notice-callout">
             <svg class="notice-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
             </svg>
-            <span><strong>Cơ chế tự động:</strong> Khi bạn đã đăng nhập vào <code>cobedenim.mshopkeeper.vn</code> trên Chrome, chỉ cần bấm nút xanh ở trên là hệ thống tự lấy token và cập nhật tồn kho mà không cần F12.</span>
+            <span><strong>Chế độ máy trạm:</strong> Khi bạn mở trên máy tính cửa hàng đã cài server local, tính năng này tự động quét phiên đăng nhập từ Chrome LevelDB mà không cần copy token.</span>
           </div>
-        </div>
-
-        <!-- Tab 2: Bookmarklet 1-Click & Token Manual -->
-        <div class="tab-pane" id="tab-bookmarklet-sync">
-          <p class="pane-text">Kéo nút bên dưới lên thanh Bookmark của trình duyệt (giống tool cũ của bạn):</p>
-          <div style="background: var(--bg-inset); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 0.75rem; text-align: center; margin-bottom: 0.75rem;">
-            <a 
-              id="bookmarkletLink"
-              href="javascript:(function(){let t='';try{const keys=['cobedenim_access_token','misa_common_access_token','access_token','token'];for(const k of keys){t=localStorage.getItem(k)||sessionStorage.getItem(k);if(t)break;}if(!t){for(let i=0;i<localStorage.length;i++){const v=localStorage.getItem(localStorage.key(i));if(v&&v.length>80&&v.includes('eyJ')){const m=v.match(/eyJ[a-zA-Z0-9._\-]{60,}/);if(m){t=m[0];break;}}}if(!t){for(let i=0;i<sessionStorage.length;i++){const v=sessionStorage.getItem(sessionStorage.key(i));if(v&&v.length>80&&v.includes('eyJ')){const m=v.match(/eyJ[a-zA-Z0-9._\-]{60,}/);if(m){t=m[0];break;}}}}}}catch(e){}if(t){t=t.replace(/^Bearer\s*/i,'').replace(/[^\w.\-]/g,'');if(navigator.clipboard){navigator.clipboard.writeText(t);}window.open('http://localhost:3000/#token='+encodeURIComponent(t),'_blank');}else{alert('Không tìm thấy token. Hãy đảm bảo bạn đang ở trang cobedenim.mshopkeeper.vn và đã đăng nhập!');}})();" 
-              class="action-btn" 
-              style="background: var(--accent-primary); color: #fff; padding: 0.6rem 1.1rem; display: inline-flex;"
-              onclick="event.preventDefault(); alert('👉 Bạn hãy KÉO nút này lên thanh Bookmark (Ctrl+Shift+B) của trình duyệt. Khi đang ở tab cobedenim.mshopkeeper.vn chỉ cần bấm bookmark là xong!');"
-            >
-              ⭐ Kéo vào Bookmark: Lấy Token Cobe Denim
-            </a>
-            <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-top: 0.4rem;">
-              Đang mở mshopkeeper → Bấm Bookmark → Tự động nhảy về trang này với token điền sẵn!
-            </div>
-          </div>
-
-          <div class="input-block">
-            <label for="tokenInput" class="input-label">Hoặc dán Bearer Token vào đây:</label>
-            <textarea id="tokenInput" class="input-textarea" rows="3" placeholder="Bearer eyJhbGciOi..."></textarea>
-          </div>
-          <button id="btnTriggerTokenSync" class="btn-primary-block" style="margin-top: 0.5rem;">
-            🔗 Kết Nối & Đồng Bộ Bằng Token Này
-          </button>
         </div>
 
         <!-- Tab 3: Excel Drag & Drop -->
