@@ -435,7 +435,8 @@ function initCloudinary() {
     }
     return cfg;
   }
-  return null;
+  const fallbackCloud = (cfg && cfg.cloudName) || process.env.CLOUDINARY_CLOUD_NAME || 'pv0t9rx7';
+  return { cloudName: fallbackCloud };
 }
 
 // ROUTE: Reverse Image Proxy (Giấu 100% nguồn gốc MISA)

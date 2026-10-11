@@ -2,7 +2,7 @@
 <html lang="vi" data-theme="denim">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Cobe Denim — Tra Cứu Tồn Kho CTV & Đại Lý</title>
   <meta name="description" content="Cổng tra cứu tồn kho tức thì theo mã, size, màu sắc cho CTV Cobe Denim kết nối MShopKeeper">
   
@@ -114,45 +114,32 @@
         </div>
       </div>
 
-      <!-- Quick Suggestion Tags -->
-      <div class="quick-chips-row">
-        <span class="chips-label">Tìm nhanh:</span>
-        <button class="chip-tag" data-query="Áo Polo">Áo Polo</button>
-        <button class="chip-tag" data-query="Áo Sơ Mi">Áo Sơ Mi</button>
-        <button class="chip-tag" data-query="Quần Kaki">Quần Kaki</button>
-        <button class="chip-tag" data-query="Quần Đùi">Quần Đùi</button>
-        <button class="chip-tag" data-query="Quần Bò">Quần Bò</button>
-        <button class="chip-tag" data-query="Áo Khoác">Áo Khoác</button>
-        <button class="chip-tag" data-query="Sịp Đùi">Sịp Đùi</button>
-        <button class="chip-tag" data-query="Phụ Kiện">Phụ Kiện</button>
-      </div>
-
-      <!-- Quick Size Pills for 1-touch filtering -->
-      <div class="quick-chips-row size-chips-row">
-        <span class="chips-label">Lọc Size:</span>
-        <button class="size-chip active" data-size="all">Tất cả</button>
-        <button class="size-chip" data-size="S">S</button>
-        <button class="size-chip" data-size="M">M</button>
-        <button class="size-chip" data-size="L">L</button>
-        <button class="size-chip" data-size="XL">XL</button>
-        <button class="size-chip" data-size="XXL">XXL</button>
-        <span class="chip-divider">|</span>
-        <button class="size-chip" data-size="28">28</button>
-        <button class="size-chip" data-size="29">29</button>
-        <button class="size-chip" data-size="30">30</button>
-        <button class="size-chip" data-size="31">31</button>
-        <button class="size-chip" data-size="32">32</button>
-        <button class="size-chip" data-size="33">33</button>
-        <button class="size-chip" data-size="34">34</button>
-        <button class="size-chip" data-size="36">36</button>
-      </div>
-
       <!-- Filter Controls: Status Tabs & Sort -->
       <div class="control-strip">
         <div class="segmented-control" id="statusTabs">
-          <button class="segment-btn active" data-status="all">Tất cả</button>
-          <button class="segment-btn" data-status="in_stock">🟢 Còn hàng</button>
-          <button class="segment-btn" data-status="out_of_stock">🔴 Hết hàng</button>
+          <button class="segment-btn active" data-status="all">
+            <svg class="status-svg status-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="7" height="7" x="3" y="3" rx="1.5"></rect>
+              <rect width="7" height="7" x="14" y="3" rx="1.5"></rect>
+              <rect width="7" height="7" x="14" y="14" rx="1.5"></rect>
+              <rect width="7" height="7" x="3" y="14" rx="1.5"></rect>
+            </svg>
+            <span>Tất cả</span>
+          </button>
+          <button class="segment-btn" data-status="in_stock">
+            <svg class="status-svg in-stock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="m8.5 12 2.5 2.5 5-5"></path>
+            </svg>
+            <span>Còn hàng</span>
+          </button>
+          <button class="segment-btn" data-status="out_of_stock">
+            <svg class="status-svg out-stock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <line x1="5.64" y1="5.64" x2="18.36" y2="18.36"></line>
+            </svg>
+            <span>Hết hàng</span>
+          </button>
         </div>
 
         <div class="sort-control">
@@ -433,6 +420,13 @@
       </div>
     </div>
   </div>
+
+  <!-- Floating Back to Top Button -->
+  <button id="btnScrollTop" class="btn-scroll-top" title="Cuộn lên đầu trang" aria-label="Cuộn lên đầu trang">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="svg-icon">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  </button>
 
   <!-- Floating Toast -->
   <div id="toast" class="toast-pill">

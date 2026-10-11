@@ -15,4 +15,6 @@ data/users.json
 data/transactions.json
 data/jwt-secret.json
 data/cloudinary-config.json
+data/variants_cache.json
 .wrangler/
+

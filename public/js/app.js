@@ -121,18 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
       fetchProducts();
     });
 
-    // Quick suggestion chip clicks
-    document.querySelectorAll('.chip-tag').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const query = btn.dataset.query;
-        searchInput.value = query;
-        currentSearch = query;
-        currentPage = 1;
-        btnClearSearch.style.display = 'flex';
-        fetchProducts();
-      });
-    });
-
     // Dedicated Size Search Input beside main search input
     const sizeInput = document.getElementById('sizeInput');
     const btnClearSize = document.getElementById('btnClearSize');
@@ -145,11 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
         activeSize = val || 'all';
         currentPage = 1;
 
-        // Sync with quick size chips
-        document.querySelectorAll('.size-chip').forEach(b => {
-          b.classList.toggle('active', b.dataset.size.toUpperCase() === activeSize.toUpperCase());
-        });
-
         clearTimeout(sizeDebounceTimer);
         sizeDebounceTimer = setTimeout(() => {
           fetchProducts();
@@ -161,29 +144,10 @@ document.addEventListener('DOMContentLoaded', () => {
         btnClearSize.style.display = 'none';
         activeSize = 'all';
         currentPage = 1;
-        document.querySelectorAll('.size-chip').forEach(b => {
-          b.classList.toggle('active', b.dataset.size === 'all');
-        });
         sizeInput.focus();
         fetchProducts();
       });
     }
-
-    // Quick Size Pills click delegation
-    document.querySelectorAll('.size-chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sizeVal = btn.dataset.size;
-        activeSize = sizeVal;
-        currentPage = 1;
-        if (sizeInput) {
-          sizeInput.value = sizeVal === 'all' ? '' : sizeVal;
-          if (btnClearSize) btnClearSize.style.display = sizeVal === 'all' ? 'none' : 'flex';
-        }
-        document.querySelectorAll('.size-chip').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        fetchProducts();
-      });
-    });
 
     // Status segment tabs
     statusTabs.addEventListener('click', (e) => {
@@ -260,6 +224,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const newTheme = currentTheme === 'light' ? 'denim' : 'light';
         applyTheme(newTheme);
         showToast(newTheme === 'light' ? 'Đã chuyển sang giao diện Sáng' : 'Đã chuyển sang giao diện Tối');
+      });
+    }
+
+    // Floating Back to Top Button
+    const btnScrollTop = document.getElementById('btnScrollTop');
+    if (btnScrollTop) {
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 280) {
+          btnScrollTop.classList.add('visible');
+        } else {
+          btnScrollTop.classList.remove('visible');
+        }
+      }, { passive: true });
+
+      btnScrollTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     }
 
@@ -843,8 +823,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const isAvailable = Number(product.totalStock) > 0;
       const stockHeadlineClass = isAvailable ? 'in_stock' : 'out_of_stock';
       const stockHeadlineText = isAvailable 
-        ? `🟢 Còn hàng (${product.totalStock} chiếc)`
-        : `🔴 Hết hàng`;
+        ? `<svg class="status-svg in-stock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 5-5"></path></svg> <span>Còn hàng (${product.totalStock} chiếc)</span>`
+        : `<svg class="status-svg out-stock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="5.64" y1="5.64" x2="18.36" y2="18.36"></line></svg> <span>Hết hàng</span>`;
 
       const retailPriceFmt = new Intl.NumberFormat('vi-VN').format(product.retailPrice) + 'đ';
 
@@ -858,15 +838,18 @@ document.addEventListener('DOMContentLoaded', () => {
           sizePillsHtml = inStockSizes.map(v => {
             const isTarget = activeSize !== 'all' && String(v.size || '').toUpperCase().trim() === activeSize.toUpperCase().trim();
             const targetClass = isTarget ? 'active-target-size' : '';
+            const fullVariantSku = v.skuVariant || `${product.sku}-${v.size}`;
             return `
-              <div class="size-pill in-stock ${targetClass}" title="Size ${v.size}: Còn ${v.stock} chiếc">
+              <div class="size-pill in-stock ${targetClass}" 
+                   onclick="copySizeSku(this, '${fullVariantSku}')"
+                   title="Bấm để copy mã: ${fullVariantSku} (Còn ${v.stock} chiếc)">
                 <span>${v.size}</span>
                 <span class="qty-number">${v.stock}</span>
               </div>
             `;
           }).join('');
         } else {
-          sizePillsHtml = `<span class="out-stock-label">🔴 Hết hàng</span>`;
+          sizePillsHtml = `<span class="out-stock-label"><svg class="status-svg out-stock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="5.64" y1="5.64" x2="18.36" y2="18.36"></line></svg> Hết hàng</span>`;
         }
 
         return `
@@ -967,6 +950,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Copy SKU
   window.copySku = function(sku) {
     copyToClipboard(sku, `Đã copy mã: ${sku}`);
+  };
+
+  // Copy Full Variant SKU (e.g. 3QNC01-MON04-L) when clicking Size Pill with visual "Copied" effect
+  window.copySizeSku = function(pillEl, fullSku) {
+    if (!pillEl || pillEl.dataset.isCopying === '1') return;
+
+    // 1. Copy exact full SKU including size
+    copyToClipboard(fullSku, `Đã copy: ${fullSku}`);
+
+    // 2. Visual feedback: change to green and show "Copied"
+    pillEl.dataset.isCopying = '1';
+    const originalContent = pillEl.innerHTML;
+    pillEl.classList.add('is-copied');
+    pillEl.innerHTML = `<span class="copied-label">Copied ✓</span>`;
+
+    // 3. Restore back after 1.5s
+    setTimeout(() => {
+      pillEl.classList.remove('is-copied');
+      pillEl.innerHTML = originalContent;
+      delete pillEl.dataset.isCopying;
+    }, 1500);
   };
 
   // Copy Stock Summary for Customer Messaging
