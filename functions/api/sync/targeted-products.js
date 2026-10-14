@@ -1,4 +1,4 @@
-import { jsonResponse, getProductsData, setCachedProducts } from '../../_utils.js';
+import { jsonResponse, getProductsData, setCachedProducts, deduplicateProducts } from '../../_utils.js';
 
 export async function onRequestPost(context) {
   try {
@@ -12,38 +12,41 @@ export async function onRequestPost(context) {
       }, 400);
     }
 
-    // 1. Lấy dữ liệu sản phẩm hiện tại trên Cloudflare Edge (từ KV hoặc ASSETS)
+    // Nếu đẩy danh sách lớn (toàn bộ danh mục > 500 sản phẩm), làm sạch và ghi đè hoàn toàn
+    if (updatedProducts.length >= 500) {
+      const cleanList = deduplicateProducts(updatedProducts);
+      const kv = context.env && (context.env.INVENTORY_KV || context.env.PRODUCTS_KV);
+      if (kv) {
+        await kv.put('products', JSON.stringify(cleanList));
+        await kv.put('last_sync_time', new Date().toISOString());
+      }
+      setCachedProducts(cleanList);
+
+      return jsonResponse({
+        success: true,
+        message: `Đã nạp sạch ${cleanList.length} sản phẩm (không trùng lặp) vào Cloudflare Edge KV!`,
+        totalProducts: cleanList.length,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    // Với cập nhật từng phần (targeted-products): Dùng Map theo SKU để chống trùng lặp tuyệt đối
     const currentProducts = await getProductsData(context);
+    const productMap = new Map();
 
-    // 2. Tạo map cập nhật theo ID và SKU
-    const updateMapById = new Map();
-    const updateMapBySku = new Map();
+    // 1. Nạp sản phẩm hiện tại vào Map theo SKU
+    currentProducts.forEach(p => {
+      const skuKey = String(p.sku || p.id || '').toUpperCase().trim();
+      if (skuKey) productMap.set(skuKey, p);
+    });
+
+    // 2. Ghi đè hoặc thêm mới các sản phẩm được cập nhật
     updatedProducts.forEach(p => {
-      if (p.id) updateMapById.set(p.id, p);
-      if (p.sku) updateMapBySku.set(String(p.sku).toUpperCase().trim(), p);
+      const skuKey = String(p.sku || p.id || '').toUpperCase().trim();
+      if (skuKey) productMap.set(skuKey, p);
     });
 
-    const merged = currentProducts.map(p => {
-      if (p.id && updateMapById.has(p.id)) {
-        return updateMapById.get(p.id);
-      }
-      const cardSku = String(p.sku || '').toUpperCase().trim();
-      if (cardSku && updateMapBySku.has(cardSku)) {
-        return updateMapBySku.get(cardSku);
-      }
-      return p;
-    });
-
-    // Thêm các sản phẩm hoàn toàn mới nếu chưa tồn tại
-    const currentIdSet = new Set(currentProducts.map(p => p.id));
-    const currentSkuSet = new Set(currentProducts.map(p => String(p.sku || '').toUpperCase().trim()));
-
-    updatedProducts.forEach(p => {
-      const cardSku = String(p.sku || '').toUpperCase().trim();
-      if (!currentIdSet.has(p.id) && !currentSkuSet.has(cardSku)) {
-        merged.push(p);
-      }
-    });
+    const merged = Array.from(productMap.values());
 
     // 3. Ghi đè trực tiếp vào Cloudflare KV
     const kv = context.env && (context.env.INVENTORY_KV || context.env.PRODUCTS_KV);

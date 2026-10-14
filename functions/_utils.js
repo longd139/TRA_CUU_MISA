@@ -35,8 +35,26 @@ export function isBotOrScraper(request) {
 let cachedProducts = null;
 let lastProductsFetch = 0;
 
+export function deduplicateProducts(products) {
+  if (!Array.isArray(products) || products.length === 0) return [];
+  const skuMap = new Map();
+  for (const p of products) {
+    const sku = String(p.sku || p.id || '').toUpperCase().trim();
+    if (!sku) continue;
+    if (!skuMap.has(sku)) {
+      skuMap.set(sku, p);
+    } else {
+      const existing = skuMap.get(sku);
+      if ((p.updatedAt && !existing.updatedAt) || (p.updatedAt > existing.updatedAt)) {
+        skuMap.set(sku, p);
+      }
+    }
+  }
+  return Array.from(skuMap.values());
+}
+
 export function setCachedProducts(products) {
-  cachedProducts = products;
+  cachedProducts = deduplicateProducts(products);
   lastProductsFetch = Date.now();
 }
 
@@ -44,7 +62,7 @@ export async function getProductsData(context) {
   const now = Date.now();
   // In-isolate cache for 15 seconds to minimize sub-requests
   if (cachedProducts && (now - lastProductsFetch < 15000)) {
-    return cachedProducts;
+    return deduplicateProducts(cachedProducts);
   }
 
   // 1. Try reading live synced data from Cloudflare KV
@@ -52,7 +70,7 @@ export async function getProductsData(context) {
     try {
       const kvData = await context.env.INVENTORY_KV.get('products', 'json');
       if (Array.isArray(kvData) && kvData.length > 0) {
-        cachedProducts = kvData;
+        cachedProducts = deduplicateProducts(kvData);
         lastProductsFetch = now;
         return cachedProducts;
       }
@@ -66,7 +84,8 @@ export async function getProductsData(context) {
     const assetUrl = new URL('/data/products.json', context.request.url);
     const res = await context.env.ASSETS.fetch(assetUrl);
     if (res.ok) {
-      cachedProducts = await res.json();
+      const raw = await res.json();
+      cachedProducts = deduplicateProducts(raw);
       lastProductsFetch = now;
       return cachedProducts;
     }
@@ -74,7 +93,7 @@ export async function getProductsData(context) {
     console.error('Lỗi tải products từ ASSETS:', err);
   }
 
-  return cachedProducts || [];
+  return cachedProducts ? deduplicateProducts(cachedProducts) : [];
 }
 
 // Helper: Fetch categories from ASSETS CDN
