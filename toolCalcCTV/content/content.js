@@ -813,7 +813,7 @@
   }
 
   /**
-   * Inject Check Button directly ABOVE the Thu Tiền (F9) button in POS Sidebar
+   * Inject Check Button directly ABOVE the bottom action buttons in POS Sidebar (Tạo đơn & Sửa đơn)
    */
   function injectCheckButtonOnPOS() {
     try {
@@ -823,48 +823,62 @@
         return;
       }
       if (!window.location.pathname.includes('salecloud') && !window.location.pathname.includes('pos')) return;
-      if (document.getElementById('ctv-btn-above-pay')) return;
 
-      // 1. Find Thu tiền (F9) button targeting buttons specifically
-      const allBtns = Array.from(document.querySelectorAll('button, .q-btn, [role="button"], a.btn'));
-      const payBtn = allBtns.find(el => {
-        const txt = (el.textContent || '').trim();
-        return txt.includes('Thu tiền');
+      const existingWrapper = document.getElementById('ctv-above-pay-wrapper');
+      if (existingWrapper) {
+        // Kiểm tra xem nút có bị treo nhầm ở đầu trang/ngoài sidebar không
+        const isMisplaced = existingWrapper.parentElement === document.body ||
+                            existingWrapper.offsetWidth > 650 ||
+                            existingWrapper.closest('header, .q-header');
+        if (isMisplaced) {
+          existingWrapper.remove();
+        } else {
+          return; // Đã nằm đúng vị trí trong sidebar
+        }
+      }
+
+      // 1. Tìm container thanh đáy của Sidebar (Chuẩn MISA: .misa-order-side-bar-bottom)
+      let bottomRow = document.querySelector('.misa-order-side-bar-bottom, [class*="order-side-bar-bottom"]');
+
+      // 2. Nếu chưa thấy class, tìm qua các nút chức năng thanh toán (btn-take-money, Thu tiền, v.v.)
+      if (!bottomRow) {
+        const payBtn = document.querySelector('button.btn-take-money, [name="take-money-btn"], [class*="btn-take-money"]') ||
+          Array.from(document.querySelectorAll('button, .q-btn, [role="button"]')).find(el => {
+            const txt = (el.textContent || '').trim().toLowerCase();
+            return txt.includes('thu tiền');
+          });
+
+        if (payBtn) {
+          bottomRow = payBtn.closest('.misa-order-side-bar-bottom, [class*="order-side-bar-bottom"], .row');
+          if (!bottomRow && payBtn.parentElement && payBtn.parentElement.offsetWidth < 650) {
+            bottomRow = payBtn.parentElement;
+          }
+        }
+      }
+
+      // Bảo vệ: Thanh đáy sidebar MShopKeeper luôn có chiều rộng < 650px và không nằm trong header
+      if (!bottomRow || !bottomRow.parentElement || bottomRow.offsetWidth > 650 || bottomRow.closest('header, .q-header')) {
+        return;
+      }
+
+      const wrapper = document.createElement('div');
+      wrapper.id = 'ctv-above-pay-wrapper';
+      wrapper.style.cssText = 'width: 100% !important; margin-bottom: 8px !important; display: flex !important; box-sizing: border-box !important; padding: 0 4px !important;';
+
+      const btn = document.createElement('button');
+      btn.id = 'ctv-btn-above-pay';
+      btn.type = 'button';
+      btn.className = 'ctv-check-dup-btn ctv-btn-large';
+      btn.title = 'Kiểm tra xem đơn hàng và các sản phẩm của CTV này đã được làm trong 12h qua chưa (Phím tắt F4)';
+      btn.innerHTML = `<span>KIỂM TRA TRÙNG ĐƠN (F4)</span>`;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        checkDuplicateOrderOnPOS();
       });
 
-      if (!payBtn) return;
-
-      // 2. Find the direct horizontal row containing both buttons
-      let btnRow = payBtn;
-      while (btnRow && btnRow.parentElement && btnRow.parentElement !== document.body) {
-        const pTxt = btnRow.parentElement.innerText || '';
-        if (pTxt.includes('Lưu tạm') && pTxt.includes('Thu tiền')) {
-          btnRow = btnRow.parentElement;
-          break;
-        }
-        btnRow = btnRow.parentElement;
-      }
-
-      if (btnRow && btnRow.parentElement) {
-        const wrapper = document.createElement('div');
-        wrapper.id = 'ctv-above-pay-wrapper';
-        wrapper.style.cssText = 'width: 100% !important; margin-bottom: 8px !important; display: flex !important; box-sizing: border-box !important; padding: 0 4px !important;';
-
-        const btn = document.createElement('button');
-        btn.id = 'ctv-btn-above-pay';
-        btn.type = 'button';
-        btn.className = 'ctv-check-dup-btn ctv-btn-large';
-        btn.title = 'Kiểm tra xem đơn hàng và các sản phẩm của CTV này đã được làm trong 12h qua chưa (Phím tắt F4)';
-        btn.innerHTML = `<span>KIỂM TRA TRÙNG ĐƠN (F4)</span>`;
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          checkDuplicateOrderOnPOS();
-        });
-
-        wrapper.appendChild(btn);
-        btnRow.parentElement.insertBefore(wrapper, btnRow);
-      }
+      wrapper.appendChild(btn);
+      bottomRow.parentElement.insertBefore(wrapper, bottomRow);
     } catch (err) {
       console.warn('[CTV Extension] Button inject error:', err);
     }
