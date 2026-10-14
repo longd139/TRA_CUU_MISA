@@ -12,8 +12,8 @@ export async function onRequestPost(context) {
       }, 400);
     }
 
-    // Clean "Bearer " prefix if user pasted the entire Authorization header
-    token = token.replace(/^Bearer\s+/i, '').trim();
+    // Clean quotes, newlines, and "Bearer " prefix if user pasted raw string
+    token = String(token).replace(/[\r\n]+/g, '').replace(/^["']|["']$/g, '').replace(/^Bearer\s+/i, '').trim();
 
     const branchId = body.branchId || '68d5c6a7-2ad8-44c8-b36c-58e095dd6ceb';
     const reqHeaders = {
@@ -29,7 +29,11 @@ export async function onRequestPost(context) {
     const stockUrl = `https://cobedenim.mshopkeeper.vn/backendg2/api/instocks?_dc=${Date.now()}&fromDate=${today}T00:00:00&toDate=${today}T23:59:59&branchID=${branchId}&stockID=00000000-0000-0000-0000-000000000000&inventoryItemCategoryID=00000000-0000-0000-0000-000000000000&inventoryItem=&showOrderedQuantity=false&UnitID=00000000-0000-0000-0000-000000000000&instockType=0&instockStatusID=0&trancationStatusID=0&quantityStatusID=0&BrandID=00000000-0000-0000-0000-000000000000&page=1&start=0&limit=1000`;
 
     // 1. Fetch real-time instocks
-    const stockRes = await fetch(stockUrl, { method: 'GET', headers: reqHeaders });
+    const stockRes = await fetch(stockUrl, {
+      method: 'GET',
+      headers: reqHeaders,
+      signal: AbortSignal.timeout(12000)
+    });
 
     if (stockRes.status === 401) {
       return jsonResponse({

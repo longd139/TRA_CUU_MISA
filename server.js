@@ -1373,6 +1373,10 @@ app.all('/api/sync/check-session', async (req, res) => {
       isFromBrowser = true;
     }
 
+    if (token) {
+      token = String(token).replace(/[\r\n]+/g, '').replace(/^["']|["']$/g, '').replace(/^Bearer\s+/i, '').trim();
+    }
+
     const checkResult = await verifyMshopkeeperSession(token);
     const masked = token.length > 16 ? `${token.slice(0, 8)}...${token.slice(-8)}` : token;
 

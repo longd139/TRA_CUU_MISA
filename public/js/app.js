@@ -106,6 +106,101 @@ document.addEventListener('DOMContentLoaded', () => {
     await fetchProducts();
   }
 
+  // Helper: Kiểm tra phiên đăng nhập MShopKeeper (LevelDB hoặc Token nhập vào)
+  async function checkSessionStatus(opts = {}) {
+    const silent = Boolean(opts.silent);
+    if (!sessionCheckerCard || !sessionIndicator || !sessionStatusBadge || !sessionStatusDesc) return { valid: false };
+
+    // Chỉ đổi giao diện nút khi người dùng chủ động bấm (không làm đơ nút khi chạy ngầm)
+    if (btnCheckSession && !silent) {
+      btnCheckSession.disabled = true;
+      btnCheckSession.innerHTML = '<span class="btn-spinner-mini"></span> <span>Đang kiểm tra...</span>';
+    }
+
+    sessionCheckerCard.classList.remove('valid', 'expired');
+    sessionIndicator.className = 'session-pulse-indicator loading';
+    sessionStatusBadge.className = 'session-status-badge loading';
+    sessionStatusBadge.textContent = 'Đang kiểm tra...';
+    sessionStatusDesc.textContent = 'Đang gửi tín hiệu kiểm tra tới MShopKeeper...';
+
+    let inputToken = tokenInput ? tokenInput.value.trim() : '';
+    if (inputToken) {
+      // Làm sạch token: xóa khoảng trắng, xuống dòng và ngoặc kép nếu có
+      inputToken = inputToken.replace(/[\r\n]+/g, '').replace(/^["']|["']$/g, '').replace(/^Bearer\s+/i, '').trim();
+    }
+
+    try {
+      let res;
+      if (inputToken) {
+        res = await fetch('/api/sync/check-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: inputToken })
+        });
+      } else {
+        res = await fetch('/api/sync/check-session');
+      }
+
+      const data = await res.json();
+
+      if (data.success && data.valid) {
+        sessionCheckerCard.classList.remove('expired');
+        sessionCheckerCard.classList.add('valid');
+        sessionIndicator.className = 'session-pulse-indicator valid';
+        sessionStatusBadge.className = 'session-status-badge valid';
+        sessionStatusBadge.textContent = data.browser ? `Hợp lệ (${data.browser}) ✓` : 'Hợp lệ ✓';
+        sessionStatusDesc.textContent = 'Phiên đăng nhập còn hạn, sẵn sàng đồng bộ tồn kho!';
+
+        if (tokenInput && !tokenInput.value.trim() && data.token) {
+          tokenInput.value = data.token;
+        }
+
+        if (!silent) {
+          showToast('Phiên đăng nhập MShopKeeper hợp lệ!');
+        }
+        return { valid: true, token: data.token };
+      } else if (data.expired) {
+        sessionCheckerCard.classList.remove('valid');
+        sessionCheckerCard.classList.add('expired');
+        sessionIndicator.className = 'session-pulse-indicator expired';
+        sessionStatusBadge.className = 'session-status-badge expired';
+        sessionStatusBadge.textContent = 'Hết hạn ⚠';
+        sessionStatusDesc.textContent = 'Phiên đã hết hạn. Hãy mở tab cobedenim.mshopkeeper.vn trên Chrome để làm mới phiên.';
+        if (!silent) {
+          showToast('Phiên đăng nhập MShopKeeper đã hết hạn!', 'error');
+        }
+        return { valid: false, expired: true };
+      } else {
+        sessionCheckerCard.classList.remove('valid');
+        sessionCheckerCard.classList.add('expired');
+        sessionIndicator.className = 'session-pulse-indicator expired';
+        sessionStatusBadge.className = 'session-status-badge expired';
+        sessionStatusBadge.textContent = 'Chưa sẵn sàng';
+        sessionStatusDesc.textContent = data.message || 'Chưa tìm thấy phiên đăng nhập. Vui lòng dán token hoặc mở Chrome.';
+        if (!silent) {
+          showToast(data.message || 'Chưa xác thực được phiên đăng nhập', 'error');
+        }
+        return { valid: false, message: data.message };
+      }
+    } catch (err) {
+      sessionCheckerCard.classList.remove('valid');
+      sessionCheckerCard.classList.add('expired');
+      sessionIndicator.className = 'session-pulse-indicator expired';
+      sessionStatusBadge.className = 'session-status-badge expired';
+      sessionStatusBadge.textContent = 'Lỗi kết nối';
+      sessionStatusDesc.textContent = 'Không thể kết nối đến máy chủ để kiểm tra phiên.';
+      if (!silent) {
+        showToast('Lỗi kiểm tra phiên: ' + err.message, 'error');
+      }
+      return { valid: false, error: err.message };
+    } finally {
+      if (btnCheckSession) {
+        btnCheckSession.disabled = false;
+        btnCheckSession.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-mini"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Kiểm Tra Phiên</span>';
+      }
+    }
+  }
+
   // Setup Event Listeners
   function setupEventListeners() {
     // Search input with debounce
@@ -350,96 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 100);
     }
 
-    // Helper: Kiểm tra phiên đăng nhập MShopKeeper (LevelDB hoặc Token nhập vào)
-    async function checkSessionStatus(opts = {}) {
-      const silent = Boolean(opts.silent);
-      if (!sessionCheckerCard || !sessionIndicator || !sessionStatusBadge || !sessionStatusDesc) return { valid: false };
-
-      if (btnCheckSession) {
-        btnCheckSession.disabled = true;
-        btnCheckSession.innerHTML = '<span class="btn-spinner-mini"></span> <span>Đang kiểm tra...</span>';
-      }
-
-      sessionCheckerCard.classList.remove('valid', 'expired');
-      sessionIndicator.className = 'session-pulse-indicator loading';
-      sessionStatusBadge.className = 'session-status-badge loading';
-      sessionStatusBadge.textContent = 'Đang kiểm tra...';
-      sessionStatusDesc.textContent = 'Đang gửi tín hiệu kiểm tra tới MShopKeeper...';
-
-      const inputToken = tokenInput ? tokenInput.value.trim() : '';
-
-      try {
-        let res;
-        if (inputToken) {
-          res = await fetch('/api/sync/check-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: inputToken })
-          });
-        } else {
-          res = await fetch('/api/sync/check-session');
-        }
-
-        const data = await res.json();
-
-        if (data.success && data.valid) {
-          sessionCheckerCard.classList.remove('expired');
-          sessionCheckerCard.classList.add('valid');
-          sessionIndicator.className = 'session-pulse-indicator valid';
-          sessionStatusBadge.className = 'session-status-badge valid';
-          sessionStatusBadge.textContent = data.browser ? `Hợp lệ (${data.browser}) ✓` : 'Hợp lệ ✓';
-          sessionStatusDesc.textContent = 'Phiên đăng nhập còn hạn, sẵn sàng đồng bộ tồn kho!';
-
-          if (tokenInput && !tokenInput.value.trim() && data.token) {
-            tokenInput.value = data.token;
-          }
-
-          if (!silent) {
-            showToast('Phiên đăng nhập MShopKeeper hợp lệ!');
-          }
-          return { valid: true, token: data.token };
-        } else if (data.expired) {
-          sessionCheckerCard.classList.remove('valid');
-          sessionCheckerCard.classList.add('expired');
-          sessionIndicator.className = 'session-pulse-indicator expired';
-          sessionStatusBadge.className = 'session-status-badge expired';
-          sessionStatusBadge.textContent = 'Hết hạn ⚠';
-          sessionStatusDesc.textContent = 'Phiên đã hết hạn. Hãy mở tab cobedenim.mshopkeeper.vn trên Chrome để làm mới phiên.';
-          if (!silent) {
-            showToast('Phiên đăng nhập MShopKeeper đã hết hạn!', 'error');
-          }
-          return { valid: false, expired: true };
-        } else {
-          sessionCheckerCard.classList.remove('valid');
-          sessionCheckerCard.classList.add('expired');
-          sessionIndicator.className = 'session-pulse-indicator expired';
-          sessionStatusBadge.className = 'session-status-badge expired';
-          sessionStatusBadge.textContent = 'Chưa sẵn sàng';
-          sessionStatusDesc.textContent = data.message || 'Chưa tìm thấy phiên đăng nhập. Vui lòng dán token hoặc mở Chrome.';
-          if (!silent) {
-            showToast(data.message || 'Chưa xác thực được phiên đăng nhập', 'error');
-          }
-          return { valid: false, message: data.message };
-        }
-      } catch (err) {
-        sessionCheckerCard.classList.remove('valid');
-        sessionCheckerCard.classList.add('expired');
-        sessionIndicator.className = 'session-pulse-indicator expired';
-        sessionStatusBadge.className = 'session-status-badge expired';
-        sessionStatusBadge.textContent = 'Lỗi kết nối';
-        sessionStatusDesc.textContent = 'Không thể kết nối đến máy chủ để kiểm tra phiên.';
-        if (!silent) {
-          showToast('Lỗi kiểm tra phiên: ' + err.message, 'error');
-        }
-        return { valid: false, error: err.message };
-      } finally {
-        if (btnCheckSession) {
-          btnCheckSession.disabled = false;
-          btnCheckSession.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-mini"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Kiểm Tra Phiên</span>';
-        }
-      }
-    }
-
     // Button: Kiểm tra phiên đăng nhập
     if (btnCheckSession) {
       btnCheckSession.addEventListener('click', () => {
@@ -576,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (tokenInput) tokenInput.focus();
           return;
         }
-        token = token.replace(/^Bearer\s+/i, '').trim();
+        token = token.replace(/[\r\n]+/g, '').replace(/^["']|["']$/g, '').replace(/^Bearer\s+/i, '').trim();
 
         btnTriggerTokenSync.disabled = true;
         btnTriggerTokenSync.innerHTML = '<span class="btn-spinner"></span> Đang đồng bộ kho... <span class="btn-percent-pill" id="btnSyncPercentBadge">15%</span>';

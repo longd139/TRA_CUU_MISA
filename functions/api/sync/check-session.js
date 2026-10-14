@@ -19,7 +19,7 @@ export async function onRequest(context) {
       }, 400);
     }
 
-    token = String(token).replace(/^Bearer\s+/i, '').trim();
+    token = String(token).replace(/[\r\n]+/g, '').replace(/^["']|["']$/g, '').replace(/^Bearer\s+/i, '').trim();
     const branchId = '68d5c6a7-2ad8-44c8-b36c-58e095dd6ceb';
     const reqHeaders = {
       'accept': 'application/json',
@@ -33,7 +33,8 @@ export async function onRequest(context) {
 
     const res = await fetch(testUrl, {
       method: 'GET',
-      headers: reqHeaders
+      headers: reqHeaders,
+      signal: AbortSignal.timeout(6000)
     });
 
     const masked = token.length > 16 ? `${token.slice(0, 8)}...${token.slice(-8)}` : token;
