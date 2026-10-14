@@ -164,14 +164,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Toggle settings
   toggleEnabled.addEventListener('change', async () => {
+    const isChecked = toggleEnabled.checked;
     const settings = (await chrome.storage.local.get('settings')).settings || {};
-    settings.enabled = toggleEnabled.checked;
+    settings.enabled = isChecked;
     await chrome.storage.local.set({ settings });
+
+    // Gửi thông báo trực tiếp đến các tab MShopKeeper đang mở để dọn sạch/kích hoạt DOM ngay lập tức
+    try {
+      chrome.tabs.query({}, (tabs) => {
+        (tabs || []).forEach(tab => {
+          if (tab.id && tab.url && (tab.url.includes('mshopkeeper.vn') || tab.url.includes('localhost') || tab.url.includes('127.0.0.1'))) {
+            chrome.tabs.sendMessage(tab.id, {
+              action: 'SET_EXTENSION_ENABLED',
+              enabled: isChecked
+            }).catch(() => {});
+          }
+        });
+      });
+    } catch (_) {}
+
+    showStatus(isChecked ? 'Đã bật tiện ích Giá CTV' : 'Đã tắt tiện ích Giá CTV', 'success');
   });
 
   toggleSummaryBar.addEventListener('change', async () => {
+    const isChecked = toggleSummaryBar.checked;
     const settings = (await chrome.storage.local.get('settings')).settings || {};
-    settings.showSummaryBar = toggleSummaryBar.checked;
+    settings.showSummaryBar = isChecked;
     await chrome.storage.local.set({ settings });
   });
 

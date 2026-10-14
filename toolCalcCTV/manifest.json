@@ -21,10 +21,13 @@
     "service_worker": "service-worker.js"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "*://*.mshopkeeper.vn/*",
+    "*://localhost/*",
+    "*://127.0.0.1/*"
   ],
   "content_scripts": [
     {
@@ -41,7 +44,9 @@
     },
     {
       "matches": [
-        "<all_urls>"
+        "*://*.mshopkeeper.vn/*",
+        "*://localhost/*",
+        "*://127.0.0.1/*"
       ],
       "js": [
         "content/content.js"

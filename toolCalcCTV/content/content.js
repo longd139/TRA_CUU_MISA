@@ -3,7 +3,24 @@
 (function () {
   'use strict';
 
-  // Ignore non-POS third-party widgets and support iframes (misacdn, zalo, facebook, etc.)
+  // CHỈ CHO PHÉP HOẠT ĐỘNG TRÊN MISA MSHOPKEEPER (hoặc localhost/127.0.0.1 để test demo)
+  function isTargetDomain() {
+    const host = (window.location.hostname || '').toLowerCase();
+    if (host.endsWith('mshopkeeper.vn') || host === 'mshopkeeper.vn') {
+      return true;
+    }
+    if ((host === 'localhost' || host === '127.0.0.1') && 
+        (window.location.pathname.includes('demo') || window.location.pathname.includes('pos') || window.location.pathname.includes('salecloud'))) {
+      return true;
+    }
+    return false;
+  }
+
+  if (!isTargetDomain()) {
+    return;
+  }
+
+  // Bỏ qua các iframe widget bên thứ ba (misacdn, zalo, facebook, v.v.)
   if (window.location.hostname.includes('misacdn.net') || 
       window.location.hostname.includes('facebook.com') || 
       window.location.hostname.includes('google.com') ||
@@ -14,7 +31,7 @@
   if (window.__CTV_EXTENSION_LOADED__) return;
   window.__CTV_EXTENSION_LOADED__ = true;
 
-  console.log('[CTV POS Extension] Active on POS.');
+  console.log('[CTV POS Extension] Active on MShopKeeper POS.');
 
   // =========================================================================
   // REAL-TIME INVENTORY SYNC FOR MSHOPKEEPER (BÁN HÀNG, HỦY ĐƠN, NHẬP KHO)
@@ -125,19 +142,39 @@
     return num.toLocaleString('vi-VN');
   }
 
+  function applyEnabledState(enabled) {
+    isEnabled = Boolean(enabled);
+    if (!isEnabled) {
+      // 1. Dọn sạch toàn bộ container hiển thị giá CTV
+      document.querySelectorAll('.ctv-price-container').forEach(el => el.remove());
+      // 2. Dọn sạch nút KIỂM TRA TRÙNG ĐƠN
+      const btnWrapper = document.getElementById('ctv-above-pay-wrapper');
+      if (btnWrapper) btnWrapper.remove();
+      // 3. Dọn sạch modal cảnh báo trùng đơn nếu đang mở
+      const dupModal = document.getElementById('ctv-dup-warning-modal');
+      if (dupModal) dupModal.remove();
+      // 4. Dọn toast thông báo
+      const toast = document.querySelector('.ctv-pos-toast');
+      if (toast) toast.remove();
+      console.log('[CTV POS Extension] ⏹ Đã TẮT tính năng trên POS.');
+    } else {
+      console.log('[CTV POS Extension] ▶ Đã BẬT tính năng trên POS.');
+      processPosDOM();
+      injectCheckButtonOnPOS();
+    }
+  }
+
   async function loadStorageData() {
     try {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         const data = await chrome.storage.local.get(['ctvPrices', 'settings']);
         ctvPricesCache = data.ctvPrices || {};
-        if (data.settings) {
-          isEnabled = data.settings.enabled !== false;
-        }
+        isEnabled = data.settings ? (data.settings.enabled !== false) : true;
       }
     } catch (e) {
       console.warn('[CTV Extension] Storage error:', e);
     }
-    processPosDOM();
+    applyEnabledState(isEnabled);
   }
 
   async function saveSkuPrice(normalizedSku, newPrice) {
@@ -162,7 +199,13 @@
    * Main scan function: strictly target actual product rows, NEVER headers
    */
   function processPosDOM() {
-    if (!isEnabled || isProcessing) return;
+    if (!isEnabled) {
+      document.querySelectorAll('.ctv-price-container').forEach(el => el.remove());
+      const btnWrapper = document.getElementById('ctv-above-pay-wrapper');
+      if (btnWrapper) btnWrapper.remove();
+      return;
+    }
+    if (isProcessing) return;
     if (!window.location.pathname.includes('salecloud') && !window.location.pathname.includes('pos')) return;
     isProcessing = true;
 
@@ -774,6 +817,11 @@
    */
   function injectCheckButtonOnPOS() {
     try {
+      if (!isEnabled || !isTargetDomain()) {
+        const existing = document.getElementById('ctv-above-pay-wrapper');
+        if (existing) existing.remove();
+        return;
+      }
       if (!window.location.pathname.includes('salecloud') && !window.location.pathname.includes('pos')) return;
       if (document.getElementById('ctv-btn-above-pay')) return;
 
@@ -827,6 +875,7 @@
    */
   function setupHotkeys() {
     window.addEventListener('keydown', (e) => {
+      if (!isEnabled || !isTargetDomain()) return;
       // F4 key or Alt + K
       if (e.key === 'F4' || (e.altKey && (e.key === 'k' || e.key === 'K'))) {
         e.preventDefault();
@@ -837,7 +886,7 @@
 
   function setupScanner() {
     const observer = new MutationObserver((mutations) => {
-      if (isProcessing) return;
+      if (!isEnabled || isProcessing) return;
 
       const isExternal = mutations.some(m => {
         const t = m.target;
@@ -849,8 +898,10 @@
 
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        processPosDOM();
-        injectCheckButtonOnPOS();
+        if (isEnabled) {
+          processPosDOM();
+          injectCheckButtonOnPOS();
+        }
       }, 200);
     });
 
@@ -859,35 +910,43 @@
     }
 
     setInterval(() => {
-      if (!isProcessing) {
+      if (isEnabled && !isProcessing) {
         processPosDOM();
         injectCheckButtonOnPOS();
       }
     }, 1500);
   }
 
+  // Lắng nghe lệnh bật/tắt trực tiếp từ Popup qua Message
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message && message.action === 'SET_EXTENSION_ENABLED') {
+        applyEnabledState(message.enabled);
+        sendResponse({ success: true, isEnabled });
+      }
+    });
+  }
+
+  // Lắng nghe thay đổi cài đặt từ chrome.storage
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === 'local') {
         if (changes.ctvPrices) {
           ctvPricesCache = changes.ctvPrices.newValue || {};
-          processPosDOM();
+          if (isEnabled) processPosDOM();
         }
         if (changes.settings) {
           const settings = changes.settings.newValue || {};
-          isEnabled = settings.enabled !== false;
-          processPosDOM();
+          applyEnabledState(settings.enabled !== false);
         }
       }
     });
   }
 
-  // Init
+  // Khởi tạo tiện ích
   loadStorageData();
-  injectCheckButtonOnPOS();
   setupHotkeys();
   setupScanner();
-  fetchRecentOrdersFromAPI(); // Warm up cache on page load
 
 })();
 
