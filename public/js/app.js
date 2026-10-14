@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (btnDownloadZipMain) {
       btnDownloadZipMain.addEventListener('click', () => {
-        showToast('Đang tải tiện ích toolCalcCTV.zip...');
+        showToast('Đang tải tiện ích từ GitHub (toolMisaGetFile)...');
       });
     }
 
