@@ -422,11 +422,11 @@
                 id="bookmarkletLink"
                 href="javascript:void(0);" 
                 class="bookmarklet-drag-capsule" 
-                title="Kéo nút này thả lên thanh Bookmark Bar của trình duyệt"
-                onclick="const ti = document.getElementById('tokenInput'); if (ti && ti.value.trim()) { document.getElementById('btnTriggerTokenSync').click(); } else { alert('👉 Hướng dẫn: Bạn hãy KÉO nút này thả lên thanh Bookmark (Ctrl+Shift+B) của trình duyệt.\nSau đó mở tab cobedenim.mshopkeeper.vn rồi bấm Bookmark để tự động nạp token!'); }"
+                title="Kéo nút này thả lên thanh Bookmark Bar của trình duyệt (Ctrl+Shift+B)"
+                draggable="true"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" class="star-icon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <span>Kéo nút này lên Bookmark Bar (hoặc bấm để đồng bộ)</span>
+                <span>⭐ Lấy Token MShopKeeper (Kéo lên Bookmark Bar)</span>
               </a>
             </div>
             <div class="bookmarklet-steps-timeline">
@@ -527,6 +527,6 @@
     <span id="toastText">Đã sao chép!</span>
   </div>
 
-  <script src="/js/app.js?v=2.2.0"></script>
+  <script src="/js/app.js?v=2.3.0"></script>
 </body>
 </html>

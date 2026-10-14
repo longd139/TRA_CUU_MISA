@@ -318,19 +318,36 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetOrigin = window.location.origin;
       const bmCode = `javascript:(function(){let t='';try{const keys=['cobedenim_access_token','misa_common_access_token','access_token','token','cobe_token'];for(const k of keys){t=localStorage.getItem(k)||sessionStorage.getItem(k);if(t)break;}if(!t){for(let i=0;i<localStorage.length;i++){const v=localStorage.getItem(localStorage.key(i))||'';if(v.length>60&&(v.startsWith('eyJ')||v.startsWith('Znuh')||v.includes('eyJ')||v.includes('Znuh'))){t=v;break;}}}if(!t){for(let i=0;i<sessionStorage.length;i++){const v=sessionStorage.getItem(sessionStorage.key(i))||'';if(v.length>60&&(v.startsWith('eyJ')||v.startsWith('Znuh')||v.includes('eyJ')||v.includes('Znuh'))){t=v;break;}}}}catch(e){}if(t){t=t.replace(/^Bearer\\s*/i,'').trim();if(navigator.clipboard){navigator.clipboard.writeText(t);}window.open('${targetOrigin}/#token='+encodeURIComponent(t),'_blank');}else{alert('Không tìm thấy token. Hãy mở tab cobedenim.mshopkeeper.vn và đăng nhập rồi thử lại!');}})();`;
       bookmarkletLink.setAttribute('href', bmCode);
+
+      // Khi người dùng bấm trực tiếp vào nút trên trang (thay vì kéo thả)
+      bookmarkletLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const curTok = tokenInput ? tokenInput.value.trim() : '';
+        if (curTok) {
+          showToast('Access Token đã có trong ô! Bạn hãy bấm nút "Bắt Đầu Đồng Bộ" bên dưới.');
+          if (btnTriggerTokenSync) btnTriggerTokenSync.focus();
+        } else {
+          showToast('👉 Hãy KÉO nút này thả lên thanh Bookmark (Ctrl+Shift+B) của trình duyệt!', 'info');
+        }
+      });
     }
 
     // Auto-fill token from URL hash (Bookmarklet 1-click support)
     if (window.location.hash && window.location.hash.startsWith('#token=')) {
       const incomingToken = decodeURIComponent(window.location.hash.replace('#token=', ''));
       history.replaceState(null, '', window.location.pathname);
-      tokenInput.value = incomingToken;
+      if (tokenInput) {
+        tokenInput.value = incomingToken;
+      }
       openSyncModal();
-      showToast('Đã nhận token từ Bookmarklet!');
-      // Auto trigger sync with this token
+      if (btnTriggerTokenSync) {
+        btnTriggerTokenSync.disabled = false;
+      }
+      showToast('✓ Đã nạp Access Token từ Bookmark! Bấm "Bắt đầu đồng bộ" để chạy.');
+      // Tự động kiểm tra phiên ngay với token vừa nạp để hiển thị tick xanh
       setTimeout(() => {
-        btnTriggerTokenSync.click();
-      }, 500);
+        checkSessionStatus({ silent: false });
+      }, 100);
     }
 
     // Helper: Kiểm tra phiên đăng nhập MShopKeeper (LevelDB hoặc Token nhập vào)
@@ -536,80 +553,118 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Trigger Token Sync (Đồng bộ trực tiếp qua Web hoặc máy trạm)
-    btnTriggerTokenSync.addEventListener('click', async () => {
-      let token = tokenInput.value.trim();
-      if (!token) {
-        showSyncFeedback('Vui lòng dán Access Token MShopKeeper vào ô trên', 'error');
-        return;
-      }
-      token = token.replace(/^Bearer\s+/i, '').trim();
-
-      btnTriggerTokenSync.disabled = true;
-      btnTriggerTokenSync.innerHTML = '<span class="btn-spinner"></span> Đang đồng bộ kho... <span class="btn-percent-pill" id="btnSyncPercentBadge">10%</span>';
-      hideSyncFeedback();
-
-      // Show Live Progress Card Immediately
-      updateSyncProgressUI({
-        title: '⚡ Đang kết nối MShopKeeper...',
-        percent: 10,
-        detail: 'Đang gửi yêu cầu đồng bộ danh mục & tồn kho...',
-        elapsed: 0
+    // Auto verify session when typing or pasting into tokenInput
+    if (tokenInput) {
+      let tokenDebounceTimer = null;
+      tokenInput.addEventListener('input', () => {
+        const val = tokenInput.value.trim();
+        if (val.length > 50) {
+          clearTimeout(tokenDebounceTimer);
+          tokenDebounceTimer = setTimeout(() => {
+            checkSessionStatus({ silent: true });
+          }, 350);
+        }
       });
-      syncProgressCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 
-      // Start live polling
-      startProgressPolling('sync');
-
-      // Smooth simulated interpolator in case running on serverless without local progress endpoint
-      let simulatedPercent = 10;
-      const simTimer = setInterval(() => {
-        if (simulatedPercent < 88) {
-          simulatedPercent += Math.floor(Math.random() * 8) + 3;
-          updateSyncProgressUI({ percent: simulatedPercent });
+    // Trigger Token Sync (Đồng bộ trực tiếp qua Web hoặc máy trạm)
+    if (btnTriggerTokenSync) {
+      btnTriggerTokenSync.addEventListener('click', async () => {
+        let token = tokenInput ? tokenInput.value.trim() : '';
+        if (!token) {
+          showSyncFeedback('Vui lòng dán Access Token MShopKeeper vào ô trên trước khi đồng bộ', 'error');
+          if (tokenInput) tokenInput.focus();
+          return;
         }
-      }, 700);
+        token = token.replace(/^Bearer\s+/i, '').trim();
 
-      try {
-        const res = await fetch('/api/sync/mshopkeeper', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token })
-        });
-        clearInterval(simTimer);
-        const data = await res.json();
-        if (data.success) {
-          updateSyncProgressUI({
-            title: '✓ Hoàn tất đồng bộ kho!',
-            percent: 100,
-            detail: data.message || 'Đã nạp đầy đủ sản phẩm và tồn kho.'
-          });
-          showSyncFeedback(data.message, 'success');
-          await loadStats();
-          await fetchProducts();
-          showToast('Đã đồng bộ kho MShopKeeper thành công!');
-        } else {
-          updateSyncProgressUI({
-            title: '⚠ Lỗi đồng bộ',
-            detail: data.message || 'Không thể đồng bộ từ MShopKeeper'
-          });
-          showSyncFeedback(data.message || 'Lỗi đồng bộ từ MShopKeeper', 'error');
-        }
-      } catch (err) {
-        clearInterval(simTimer);
+        btnTriggerTokenSync.disabled = true;
+        btnTriggerTokenSync.innerHTML = '<span class="btn-spinner"></span> Đang đồng bộ kho... <span class="btn-percent-pill" id="btnSyncPercentBadge">15%</span>';
+        hideSyncFeedback();
+
+        // Show Live Progress Card Immediately
         updateSyncProgressUI({
-          title: '⚠ Lỗi kết nối',
-          detail: err.message
+          title: '⚡ Đang kết nối MShopKeeper...',
+          percent: 15,
+          detail: 'Đang tải danh mục sản phẩm & tồn kho chi tiết...',
+          elapsed: 0,
+          step: 1
         });
-        showSyncFeedback('Lỗi kết nối: ' + err.message, 'error');
-      } finally {
-        clearInterval(simTimer);
-        setTimeout(() => {
+        if (syncProgressCard) {
+          syncProgressCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Smooth simulated interpolator for instant feedback
+        let simulatedPercent = 15;
+        let elapsedSec = 0;
+        const simTimer = setInterval(() => {
+          elapsedSec++;
+          if (simulatedPercent < 85) {
+            simulatedPercent += Math.floor(Math.random() * 8) + 4;
+            let currentStep = 1;
+            let stepTitle = 'Đang tải danh mục sản phẩm & tồn kho...';
+            if (simulatedPercent > 30 && simulatedPercent <= 60) {
+              currentStep = 2;
+              stepTitle = 'Đang phân loại tồn kho theo từng Size/Màu...';
+            } else if (simulatedPercent > 60) {
+              currentStep = 3;
+              stepTitle = 'Đang cập nhật bảng giá và ghi nhận số lượng...';
+            }
+            updateSyncProgressUI({
+              title: `⚡ [Bước ${currentStep}/4] ${stepTitle}`,
+              percent: simulatedPercent,
+              detail: stepTitle,
+              elapsed: elapsedSec,
+              step: currentStep
+            });
+          }
+        }, 700);
+
+        try {
+          const res = await fetch('/api/sync/mshopkeeper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+          });
+          clearInterval(simTimer);
+          const data = await res.json();
+          if (data.success) {
+            updateSyncProgressUI({
+              title: '✓ Hoàn tất đồng bộ kho!',
+              percent: 100,
+              detail: data.message || 'Đã nạp đầy đủ sản phẩm và tồn kho.',
+              elapsed: elapsedSec,
+              step: 4
+            });
+            showSyncFeedback(data.message, 'success');
+            await loadStats();
+            await fetchProducts();
+            showToast('Đã đồng bộ kho MShopKeeper thành công!');
+          } else {
+            updateSyncProgressUI({
+              title: '⚠ Lỗi đồng bộ',
+              percent: 0,
+              detail: data.message || 'Không thể đồng bộ từ MShopKeeper',
+              elapsed: elapsedSec
+            });
+            showSyncFeedback(data.message || 'Lỗi đồng bộ từ MShopKeeper', 'error');
+          }
+        } catch (err) {
+          clearInterval(simTimer);
+          updateSyncProgressUI({
+            title: '⚠ Lỗi kết nối',
+            percent: 0,
+            detail: err.message,
+            elapsed: elapsedSec
+          });
+          showSyncFeedback('Lỗi kết nối máy chủ: ' + err.message, 'error');
+        } finally {
+          clearInterval(simTimer);
           btnTriggerTokenSync.disabled = false;
           btnTriggerTokenSync.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-action-icon"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Bắt Đầu Đồng Bộ Tồn Kho Ngay</span>';
-        }, 1500);
-      }
-    });
+        }
+      });
+    }
 
     // Tab 4: Cloudinary Image Fill Event Listeners
     if (btnStartFillImages) {
