@@ -2536,8 +2536,44 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Helper: Tự động đóng gói extension toolCalcCTV.zip khi khởi động hoặc khi có cập nhật
+function ensurePackedExtension() {
+  try {
+    const extDir = path.join(__dirname, 'toolCalcCTV');
+    const downloadsDir = path.join(__dirname, 'public', 'downloads');
+    const zipPath = path.join(downloadsDir, 'toolCalcCTV.zip');
+    if (!fs.existsSync(extDir)) return;
+    if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir, { recursive: true });
+
+    let needPack = !fs.existsSync(zipPath);
+    if (!needPack) {
+      const zipStat = fs.statSync(zipPath);
+      const extFiles = fs.readdirSync(extDir, { recursive: true });
+      for (const f of extFiles) {
+        const full = path.join(extDir, f);
+        try {
+          if (fs.statSync(full).mtimeMs > zipStat.mtimeMs) {
+            needPack = true;
+            break;
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (needPack) {
+      console.log('[EXTENSION] Phát hiện cập nhật trong toolCalcCTV, tự động đóng gói toolCalcCTV.zip...');
+      const { execSync } = require('child_process');
+      execSync(`tar.exe -a -c -f "${zipPath}" -C "${extDir}" .`);
+      console.log('[EXTENSION] Đã tự động đóng gói thành công: public/downloads/toolCalcCTV.zip');
+    }
+  } catch (err) {
+    console.warn('[EXTENSION] Bỏ qua tự động đóng gói extension:', err.message);
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`[COBE DENIM INVENTORY] Server is running at http://localhost:${PORT}`);
+  ensurePackedExtension();
   // Start background auto sync timer
   startAutoSyncScheduler();
 });

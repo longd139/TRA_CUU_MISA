@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "pages:dev": "wrangler pages dev public"
+    "pages:dev": "wrangler pages dev public",
+    "pack-ext": "tar.exe -a -c -f public/downloads/toolCalcCTV.zip -C toolCalcCTV ."
   },
   "keywords": [],
   "author": "",
