@@ -2024,13 +2024,13 @@ async function forwardSyncToCloudflare(token, branchId) {
   if (!cfUrl) return null;
 
   try {
-    console.log(`[SYNC-CLOUDFLARE] Đang gửi token lên Cloudflare (${cfUrl})...`);
-    const cfRes = await fetch(`${cfUrl}/api/sync/mshopkeeper`, {
+    const products = getProducts();
+    console.log(`[SYNC-CLOUDFLARE] Đang đẩy ${products.length} sản phẩm đầy đủ biến thể lên Cloudflare (${cfUrl})...`);
+    const cfRes = await fetch(`${cfUrl}/api/sync/targeted-products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        token: token || config.cachedToken,
-        branchId: branchId || config.branchId
+        updatedProducts: products
       })
     });
     const cfJson = await cfRes.json().catch(() => ({}));
