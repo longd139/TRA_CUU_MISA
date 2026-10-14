@@ -60,6 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCopySkuModal = document.getElementById('btnCopySkuModal');
   let currentLightboxProduct = null;
 
+  // Extension Modal Elements
+  const btnOpenExtModal = document.getElementById('btnOpenExtModal');
+  const extensionModal = document.getElementById('extensionModal');
+  const extensionModalBackdrop = document.getElementById('extensionModalBackdrop');
+  const btnCloseExtensionModal = document.getElementById('btnCloseExtensionModal');
+  const btnOpenExtGuideFromSync = document.getElementById('btnOpenExtGuideFromSync');
+  const btnCopyExtUrl = document.getElementById('btnCopyExtUrl');
+  const btnDownloadZipMain = document.getElementById('btnDownloadZipMain');
+
   // Admin Modal Elements
   const btnOpenSync = document.getElementById('btnOpenSync');
   const syncModal = document.getElementById('syncModal');
@@ -352,6 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Escape') {
         closeLightbox();
         closeSyncModal();
+        closeExtensionModal();
       }
     });
 
@@ -360,6 +370,33 @@ document.addEventListener('DOMContentLoaded', () => {
         copyToClipboard(currentLightboxProduct.sku, `Đã copy mã: ${currentLightboxProduct.sku}`);
       }
     });
+
+    // Extension Modal Events
+    if (btnOpenExtModal) {
+      btnOpenExtModal.addEventListener('click', openExtensionModal);
+    }
+    if (btnCloseExtensionModal) {
+      btnCloseExtensionModal.addEventListener('click', closeExtensionModal);
+    }
+    if (extensionModalBackdrop) {
+      extensionModalBackdrop.addEventListener('click', closeExtensionModal);
+    }
+    if (btnOpenExtGuideFromSync) {
+      btnOpenExtGuideFromSync.addEventListener('click', () => {
+        closeSyncModal();
+        openExtensionModal();
+      });
+    }
+    if (btnCopyExtUrl) {
+      btnCopyExtUrl.addEventListener('click', () => {
+        copyToClipboard('chrome://extensions/', 'Đã sao chép: chrome://extensions/');
+      });
+    }
+    if (btnDownloadZipMain) {
+      btnDownloadZipMain.addEventListener('click', () => {
+        showToast('Đang tải tiện ích toolCalcCTV.zip...');
+      });
+    }
 
     // Sync modal events (mở trực tiếp không cần nhập mã PIN)
     btnOpenSync.addEventListener('click', () => {
@@ -1304,6 +1341,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function closeSyncModal() {
     syncModal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // Extension Modal Logic
+  function openExtensionModal() {
+    if (!extensionModal) return;
+    extensionModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeExtensionModal() {
+    if (!extensionModal) return;
+    extensionModal.style.display = 'none';
     document.body.style.overflow = '';
   }
 

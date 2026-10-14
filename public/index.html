@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/css/style.css?v=2.2.0">
+  <link rel="stylesheet" href="/css/style.css?v=2.3.0">
 </head>
 <body>
 
@@ -46,6 +46,16 @@
           </svg>
           <span class="btn-label">API Đối Tác</span>
         </a>
+
+        <!-- Tiện ích Extension CTV POS -->
+        <button id="btnOpenExtModal" class="action-btn ext-btn" title="Tải Extension Tính Giá CTV POS (Chrome / Edge / Cốc Cốc)">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span class="btn-label">Tải Extension CTV</span>
+        </button>
 
         <!-- MShopKeeper Sync Trigger -->
         <button id="btnOpenSync" class="action-btn sync-btn" title="Quản lý đồng bộ MShopKeeper">
@@ -446,6 +456,30 @@
               </div>
             </div>
           </div>
+
+          <!-- Extension Chrome / Edge POS Shortcut Card -->
+          <div class="extension-pro-card">
+            <div class="extension-card-header">
+              <div class="extension-badge">🧩 Extension Chrome / Edge POS</div>
+              <span class="extension-version">v1.1.0 • toolCalcCTV</span>
+            </div>
+            <div class="extension-body-text">
+              Tự động nhận diện mã & sửa giá CTV trên màn hình POS (Sapo), tự động bắt token MShopKeeper và hỗ trợ nhập / xuất bảng giá Excel.
+            </div>
+            <div class="extension-action-row">
+              <a href="/downloads/toolCalcCTV.zip" download="toolCalcCTV.zip" class="btn-ext-download" title="Tải file toolCalcCTV.zip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svg-icon-sm">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Tải Tiện Ích (.ZIP — 355 KB)</span>
+              </a>
+              <button type="button" class="btn-ext-guide" id="btnOpenExtGuideFromSync">
+                📖 Hướng dẫn cài 3 bước
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Tab 2: Local Laptop Auto Detect -->
@@ -512,6 +546,109 @@
     </div>
   </div>
 
+  <!-- Extension Download & Install Guide Modal -->
+  <div id="extensionModal" class="admin-overlay" style="display: none;">
+    <div class="admin-scrim" id="extensionModalBackdrop"></div>
+    <div class="admin-dialog extension-dialog">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <div class="dialog-icon-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.3);">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </div>
+          <div>
+            <h2 class="dialog-heading">Tiện Ích Tra Cứu & Tính Giá CTV POS</h2>
+            <div class="dialog-subheading">
+              <span class="sub-dot" style="background: #10b981;"></span> Dành cho Chrome, Cốc Cốc, Edge • Phiên bản 1.1.0
+            </div>
+          </div>
+        </div>
+        <button class="dialog-close-btn" id="btnCloseExtensionModal" aria-label="Đóng">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <!-- Big Download Hero Card -->
+        <div class="ext-download-hero">
+          <div class="ext-hero-info">
+            <span class="ext-hero-tag">GÓI CÀI ĐẶT EXTENSION MANIFEST V3</span>
+            <h3 class="ext-hero-title">toolCalcCTV — Tiện Ích Độc Quyền CTV</h3>
+            <p class="ext-hero-desc">Tự động nhận diện mã & áp giá CTV trên màn hình POS (Sapo), tự bắt token MShopKeeper ngầm và hỗ trợ import/export bảng giá Excel.</p>
+          </div>
+          <a href="/downloads/toolCalcCTV.zip" download="toolCalcCTV.zip" id="btnDownloadZipMain" class="btn-primary-block btn-download-hero-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-action-icon">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Tải Ngay Extension (.ZIP — 355 KB)</span>
+          </a>
+        </div>
+
+        <!-- 3-Step Setup Guide -->
+        <div class="ext-guide-section">
+          <div class="ext-guide-header">
+            <span class="guide-title">🚀 Hướng Dẫn Cài Đặt 3 Bước (Chưa đến 1 phút)</span>
+          </div>
+          
+          <div class="ext-steps-grid">
+            <!-- Step 1 -->
+            <div class="ext-step-card">
+              <div class="step-badge">1</div>
+              <div class="step-content">
+                <div class="step-title">Tải & Giải Nén File ZIP</div>
+                <div class="step-desc">Bấm nút xanh ở trên để tải file <code>toolCalcCTV.zip</code> về máy, chuột phải chọn <strong>Extract All... (Giải nén tại đây)</strong> ra một thư mục.</div>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="ext-step-card">
+              <div class="step-badge">2</div>
+              <div class="step-content">
+                <div class="step-title">Mở Trang Quản Lý Tiện Ích</div>
+                <div class="step-desc">
+                  Truy cập đường dẫn sau trên thanh địa chỉ trình duyệt:
+                  <div class="copy-url-box">
+                    <code id="chromeExtUrl">chrome://extensions/</code>
+                    <button type="button" id="btnCopyExtUrl" class="btn-copy-chip" title="Sao chép đường dẫn">Copy</button>
+                  </div>
+                  Sau đó <strong>Bật công tắc "Chế độ dành cho nhà phát triển" (Developer mode)</strong> ở góc trên bên phải.
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="ext-step-card">
+              <div class="step-badge">3</div>
+              <div class="step-content">
+                <div class="step-title">Tải Tiện Ích Đã Giải Nén</div>
+                <div class="step-desc">Bấm nút <strong>"Tải tiện ích đã giải nén" (Load unpacked)</strong> ở góc trên bên trái ➔ Chọn thư mục <code>toolCalcCTV</code> vừa giải nén. Hoàn tất!</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature Highlights -->
+        <div class="ext-feature-row">
+          <div class="ext-feat-item">
+            <span class="feat-icon">⚡</span>
+            <span>Click sửa giá trực tiếp trên POS</span>
+          </div>
+          <div class="ext-feat-item">
+            <span class="feat-icon">📊</span>
+            <span>Nhập / Xuất Excel bảng giá CTV</span>
+          </div>
+          <div class="ext-feat-item">
+            <span class="feat-icon">🔐</span>
+            <span>Tự bắt Token MShopKeeper ngầm</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating Back to Top Button -->
   <button id="btnScrollTop" class="btn-scroll-top" title="Cuộn lên đầu trang" aria-label="Cuộn lên đầu trang">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="svg-icon">
@@ -527,6 +664,6 @@
     <span id="toastText">Đã sao chép!</span>
   </div>
 
-  <script src="/js/app.js?v=2.4.0"></script>
+  <script src="/js/app.js?v=2.5.0"></script>
 </body>
 </html>

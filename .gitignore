@@ -6,7 +6,8 @@ data/sync-config.json
 scratch/
 scratch_*
 __pycache__/
-downloads/
+/downloads/
+!public/downloads/
 *.xlsx
 .agents/
 data/api-keys.json
