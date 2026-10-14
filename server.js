@@ -261,7 +261,14 @@ function saveProducts(products) {
 // Helper: Read config
 function getConfig() {
   try {
-    if (!fs.existsSync(CONFIG_FILE)) return {};
+    if (!fs.existsSync(CONFIG_FILE)) {
+      const exampleConfig = path.join(__dirname, 'data', 'sync-config.example.json');
+      if (fs.existsSync(exampleConfig)) {
+        fs.copyFileSync(exampleConfig, CONFIG_FILE);
+      } else {
+        return {};
+      }
+    }
     return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
   } catch (err) {
     return {};
