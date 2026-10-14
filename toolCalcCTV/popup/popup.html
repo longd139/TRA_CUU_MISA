@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý Giá CTV POS</title>
+  <link rel="stylesheet" href="popup.css">
+  <script src="../lib/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">🏷️</div>
+        <div>
+          <h1 class="app-title">Giá CTV POS</h1>
+          <p class="app-subtitle">Hiển thị & Sửa giá trực tiếp</p>
+        </div>
+      </div>
+      <div class="toggle-wrap">
+        <label class="switch" title="Bật/Tắt tính năng">
+          <input type="checkbox" id="toggle-enabled" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </header>
+
+    <!-- Excel Actions Bar -->
+    <section class="excel-actions-card">
+      <div class="card-title-row">
+        <h3>📊 Quản lý File Excel</h3>
+        <span class="badge-count" id="total-sku-badge">0 mã</span>
+      </div>
+      <p class="card-desc">Nhập/Xuất file Excel (.xlsx, .xls) danh sách giá CTV</p>
+      
+      <div class="btn-group">
+        <label class="btn btn-primary" for="excel-file-input">
+          📥 Nhập File Excel
+          <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;">
+        </label>
+        <button id="btn-export-excel" class="btn btn-secondary" title="Xuất toàn bộ giá ra file Excel">
+          📤 Xuất Excel
+        </button>
+        <button id="btn-download-template" class="btn btn-outline" title="Tải file Excel mẫu chuẩn 2 cột">
+          📄 File Mẫu
+        </button>
+      </div>
+      <div id="import-status" class="status-msg"></div>
+    </section>
+
+    <!-- Quick Add & Search -->
+    <section class="sku-manager-section">
+      <div class="search-bar-row">
+        <input type="text" id="sku-search-input" placeholder="🔍 Tìm kiếm mã (VD: DCC01-DE)..." />
+        <button id="btn-open-add-modal" class="btn btn-sm btn-primary" title="Thêm mã mới">➕ Thêm</button>
+      </div>
+
+      <!-- SKU List Table -->
+      <div class="sku-list-container">
+        <table class="sku-table">
+          <thead>
+            <tr>
+              <th>Mã (Mã + Màu)</th>
+              <th>Giá CTV</th>
+              <th style="width: 60px; text-align: center;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="sku-table-body">
+            <!-- Dynamic rows will be inserted here -->
+          </tbody>
+        </table>
+        <div id="empty-state" class="empty-state">
+          <p>Chưa có mã nào được lưu.</p>
+          <small>Nhập mã trực tiếp trên POS (click vào số 0) hoặc Nhập từ file Excel.</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer Controls -->
+    <footer class="app-footer">
+      <label class="checkbox-label">
+        <input type="checkbox" id="toggle-summary-bar" checked>
+        <span>Hiện thanh tổng kết trên POS</span>
+      </label>
+      <button id="btn-clear-all" class="text-danger-btn" title="Xóa toàn bộ dữ liệu">Xóa tất cả</button>
+    </footer>
+  </div>
+
+  <!-- Add / Edit Modal -->
+  <div id="sku-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3 id="modal-title">Thêm Mã CTV Mới</h3>
+      <div class="form-group">
+        <label for="modal-sku-input">Mã SKU (sẽ tự bỏ Size):</label>
+        <input type="text" id="modal-sku-input" placeholder="VD: DCC01-DE-L hoặc DCC01-DE" />
+        <small class="hint-text" id="modal-sku-normalized-hint"></small>
+      </div>
+      <div class="form-group">
+        <label for="modal-price-input">Giá CTV (VNĐ):</label>
+        <input type="text" id="modal-price-input" placeholder="VD: 350000 hoặc 350k" />
+      </div>
+      <div class="modal-actions">
+        <button id="btn-modal-cancel" class="btn btn-outline">Hủy</button>
+        <button id="btn-modal-save" class="btn btn-primary">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

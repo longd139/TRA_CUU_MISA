@@ -7,6 +7,7 @@
   "syncIntervalMinutes": 120,
   "autoSyncEnabled": true,
   "adminPin": "1234",
+  "cloudflareUrl": "https://tra-cuu-misa.pages.dev",
   "cachedToken": "",
   "lastSyncTime": "",
   "syncStatus": "READY",

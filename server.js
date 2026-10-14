@@ -1296,6 +1296,106 @@ function resolveBrandAndCategory(master, categoryMap) {
   };
 }
 
+// Helper: Kiểm tra nhanh hiệu lực của Token MShopKeeper với máy chủ MISA
+async function verifyMshopkeeperSession(token, branchId) {
+  if (!token) {
+    return { valid: false, message: 'Token không được để trống' };
+  }
+  const cleanToken = String(token).replace(/^Bearer\s+/i, '').trim();
+  const targetBranchId = branchId || getConfig().branchId || '68d5c6a7-2ad8-44c8-b36c-58e095dd6ceb';
+  const reqHeaders = {
+    'accept': 'application/json',
+    'authorization': `Bearer ${cleanToken}`,
+    'companycode': 'cobedenim',
+    'x-misa-branchid': targetBranchId,
+    'x-misa-language': 'vi-VN'
+  };
+
+  try {
+    const testUrl = `https://cobedenim.mshopkeeper.vn/backendg2/api/InventoryItemCategory/TreeItem?_dc=${Date.now()}&node=root`;
+    const res = await fetch(testUrl, {
+      method: 'GET',
+      headers: reqHeaders,
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (res.ok) {
+      return {
+        valid: true,
+        status: res.status,
+        message: 'Phiên đăng nhập MShopKeeper hợp lệ và đang hoạt động!'
+      };
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      return {
+        valid: false,
+        status: res.status,
+        expired: true,
+        message: 'Phiên đăng nhập đã hết hạn. Hãy mở tab cobedenim.mshopkeeper.vn trên Chrome để làm mới phiên.'
+      };
+    }
+
+    return {
+      valid: false,
+      status: res.status,
+      message: `MShopKeeper trả về mã lỗi HTTP ${res.status}.`
+    };
+  } catch (err) {
+    return {
+      valid: false,
+      status: 0,
+      message: `Lỗi kết nối tới MShopKeeper: ${err.message}`
+    };
+  }
+}
+
+// API: Kiểm tra trạng thái phiên đăng nhập MShopKeeper (LevelDB máy trạm hoặc token truyền lên)
+app.all('/api/sync/check-session', async (req, res) => {
+  try {
+    let token = (req.body && req.body.token) || req.query.token;
+    let browserName = '';
+    let isFromBrowser = false;
+
+    // Nếu không truyền token, tự động đọc từ LevelDB trên máy trạm
+    if (!token) {
+      const tokenInfo = findLevelDbToken();
+      if (!tokenInfo || !tokenInfo.token) {
+        return res.json({
+          success: false,
+          valid: false,
+          found: false,
+          message: 'Chưa tìm thấy phiên đăng nhập trên trình duyệt. Hãy mở Chrome / Edge và đăng nhập vào cobedenim.mshopkeeper.vn.'
+        });
+      }
+      token = tokenInfo.token;
+      browserName = tokenInfo.browser;
+      isFromBrowser = true;
+    }
+
+    const checkResult = await verifyMshopkeeperSession(token);
+    const masked = token.length > 16 ? `${token.slice(0, 8)}...${token.slice(-8)}` : token;
+
+    return res.json({
+      success: true,
+      valid: checkResult.valid,
+      expired: Boolean(checkResult.expired),
+      browser: browserName || 'Thủ công',
+      isFromBrowser,
+      token,
+      tokenMasked: masked,
+      status: checkResult.status,
+      message: checkResult.message
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      valid: false,
+      message: 'Lỗi kiểm tra phiên: ' + err.message
+    });
+  }
+});
+
 // API: Auto-detect token from host machine LevelDB
 app.get('/api/sync/auto-token', (req, res) => {
   const result = findLevelDbToken();
@@ -1587,8 +1687,8 @@ async function performSyncFromMShopKeeper(token, branchId) {
     mshopSyncProgress.stepTitle = 'Đang tải tồn kho tổng thể';
     mshopSyncProgress.percent = 35;
     mshopSyncProgress.detail = 'Đang truy vấn số lượng tồn kho theo thời gian thực...';
-
-    const today = new Date().toISOString().split('T')[0];
+    const nowVn = new Date(Date.now() + 7 * 3600 * 1000);
+    const today = nowVn.toISOString().split('T')[0];
     const stockUrl = `https://cobedenim.mshopkeeper.vn/backendg2/api/instocks?_dc=${Date.now()}&fromDate=${today}T00:00:00&toDate=${today}T23:59:59&branchID=${targetBranchId}&stockID=00000000-0000-0000-0000-000000000000&inventoryItemCategoryID=00000000-0000-0000-0000-000000000000&inventoryItem=&showOrderedQuantity=false&UnitID=00000000-0000-0000-0000-000000000000&instockType=0&instockStatusID=0&trancationStatusID=0&quantityStatusID=0&BrandID=00000000-0000-0000-0000-000000000000&page=1&start=0&limit=1000`;
 
     console.log(`[SYNC] Gửi yêu cầu lấy số lượng tồn kho MShopKeeper (${targetBranchId})...`);
@@ -1698,7 +1798,7 @@ async function performSyncFromMShopKeeper(token, branchId) {
       const batch = masterItems.slice(i, i + BATCH_SIZE_STOCKS);
       await Promise.all(batch.map(async (m) => {
         try {
-          const u = `https://cobedenim.mshopkeeper.vn/backendg2/api/instocks/detail?_dc=${Date.now()}&fromDate=${today}T00:00:00&toDate=${today}T23:59:59&branchID=&stockID=7fba5f82-0e11-4694-8056-23eb6cf34dce&inventoryItemID=${m.InventoryItemID}&showOrderedQuantity=false&UnitID=${m.UnitID || '746ec67b-d56b-4df7-8187-2fb7fcf31216'}&lotID=&expiryDate=&isShowAllDetail=true`;
+          const u = `https://cobedenim.mshopkeeper.vn/backendg2/api/instocks/detail?_dc=${Date.now()}&fromDate=${today}T00:00:00&toDate=${today}T23:59:59&branchID=${targetBranchId}&stockID=00000000-0000-0000-0000-000000000000&inventoryItemID=${m.InventoryItemID}&showOrderedQuantity=false&UnitID=00000000-0000-0000-0000-000000000000&lotID=&expiryDate=&isShowAllDetail=true`;
           const r = await fetch(u, { headers: reqHeaders, signal: AbortSignal.timeout(8000) });
           const d = await r.json();
           (d.Data || []).forEach(it => {
@@ -1884,6 +1984,9 @@ async function performSyncFromMShopKeeper(token, branchId) {
 
     console.log(`[SYNC] Hoàn tất: ${expandedProducts.length} phân loại màu, ${picCount} mẫu có ảnh thật.`);
 
+    // Tự động đẩy dữ liệu đồng bộ lên Cloudflare nếu có cloudflareUrl
+    forwardSyncToCloudflare(targetToken, targetBranchId).catch(() => {});
+
     mshopSyncProgress.running = false;
     mshopSyncProgress.percent = 100;
     mshopSyncProgress.stepTitle = 'Hoàn tất đồng bộ';
@@ -1910,10 +2013,357 @@ async function performSyncFromMShopKeeper(token, branchId) {
   }
 }
 
-// API: Get Real-time Progress (Both MShopKeeper inventory sync & Cloudinary image fill)
-app.get('/api/sync/progress', (req, res) => {
+// Helper: Tự động đẩy kết quả đồng bộ lên Cloudflare Pages & KV nếu có cấu hình cloudflareUrl
+async function forwardSyncToCloudflare(token, branchId) {
+  const config = getConfig();
+  const cfUrl = (config.cloudflareUrl || process.env.CLOUDFLARE_URL || '').trim().replace(/\/+$/, '');
+  if (!cfUrl) return null;
+
+  try {
+    console.log(`[SYNC-CLOUDFLARE] Đang gửi token lên Cloudflare (${cfUrl})...`);
+    const cfRes = await fetch(`${cfUrl}/api/sync/mshopkeeper`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: token || config.cachedToken,
+        branchId: branchId || config.branchId
+      })
+    });
+    const cfJson = await cfRes.json().catch(() => ({}));
+    if (cfRes.ok && cfJson.success) {
+      console.log(`[SYNC-CLOUDFLARE] ✓ Thành công! Cloudflare đã cập nhật ${cfJson.totalProducts || 0} sản phẩm vào INVENTORY_KV.`);
+      return { success: true, message: cfJson.message };
+    } else {
+      console.warn(`[SYNC-CLOUDFLARE] ⚠ Cloudflare phản hồi:`, cfJson.message || cfRes.statusText);
+      return { success: false, message: cfJson.message || cfRes.statusText };
+    }
+  } catch (err) {
+    console.warn(`[SYNC-CLOUDFLARE] ⚠ Không thể kết nối Cloudflare: ${err.message}`);
+    return { success: false, message: err.message };
+  }
+}
+
+// Helper: Đẩy dữ liệu cập nhật tức thì lên Cloudflare Pages & KV
+async function forwardTargetedSyncToCloudflare(updatedProducts) {
+  if (!Array.isArray(updatedProducts) || updatedProducts.length === 0) return null;
+  const config = getConfig();
+  const cfUrl = (config.cloudflareUrl || process.env.CLOUDFLARE_URL || '').trim().replace(/\/+$/, '');
+  if (!cfUrl) return null;
+
+  try {
+    const cfRes = await fetch(`${cfUrl}/api/sync/targeted-products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updatedProducts }),
+      signal: AbortSignal.timeout(5000)
+    });
+    const cfJson = await cfRes.json().catch(() => ({}));
+    if (cfRes.ok && cfJson.success) {
+      console.log(`[SYNC-CLOUDFLARE] ✓ Đồng bộ tức thì ${updatedProducts.length} sản phẩm lên Cloudflare KV (${cfUrl}) thành công!`);
+      return { success: true };
+    } else {
+      console.warn(`[SYNC-CLOUDFLARE] ⚠ Cloudflare (${cfUrl}) phản hồi: ${cfJson.message || cfRes.statusText}`);
+    }
+  } catch (err) {
+    console.warn(`[SYNC-CLOUDFLARE] ℹ Không thể kết nối Cloudflare URL (${cfUrl}): ${err.message}. (Nếu chưa deploy Cloudflare Pages hoặc tên miền khác, bạn có thể cập nhật lại cloudflareUrl trong sync-config.json).`);
+  }
+  return null;
+}
+
+// Core Targeted Real-Time Sync: Cập nhật biến động kho chính xác từ MShopKeeper khi có giao dịch
+async function syncTargetedProducts({ action = 'targeted_sync', items = [], refId = null, token = null, branchId = null }) {
+  const tStart = Date.now();
+  const config = getConfig();
+  const levelDbInfo = findLevelDbToken();
+  const targetToken = token || (levelDbInfo && levelDbInfo.token) || config.cachedToken || process.env.MSHOPKEEPER_TOKEN;
+  const targetBranchId = branchId || config.branchId || '68d5c6a7-2ad8-44c8-b36c-58e095dd6ceb';
+
+  if (!targetToken) {
+    return {
+      success: false,
+      message: 'Chưa có Access Token MShopKeeper để đồng bộ.'
+    };
+  }
+
+  const reqHeaders = {
+    'accept': 'application/json',
+    'authorization': `Bearer ${targetToken}`,
+    'companycode': 'cobedenim',
+    'x-misa-branchid': targetBranchId,
+    'x-misa-language': 'vi-VN'
+  };
+
+  const resolvedItems = [...(Array.isArray(items) ? items : [])];
+
+  // Nếu có refId mà không có sẵn chi tiết items, tự động kéo từ MISA API tương ứng
+  if (refId && resolvedItems.length === 0) {
+    try {
+      const isLikelyInward = action.includes('inward');
+      if (isLikelyInward) {
+        const inwardDetailUrl = `https://cobedenim.mshopkeeper.vn/backendg2/api/INInwards/INInwardDetail/${encodeURIComponent(refId)}?_dc=${Date.now()}&page=1&start=0&limit=100`;
+        const inRes = await fetch(inwardDetailUrl, { headers: reqHeaders, signal: AbortSignal.timeout(15000) });
+        if (inRes.ok) {
+          const inJson = await inRes.json();
+          const details = (inJson.Data && Array.isArray(inJson.Data)) ? inJson.Data : (inJson.INInwardDetails || []);
+          details.forEach(dt => {
+            if (dt.SKUCode) {
+              resolvedItems.push({
+                sku: dt.SKUCode,
+                parentId: dt.ParentID || dt.InventoryItemID,
+                parentSku: dt.SKUCodeParent,
+                quantity: dt.Quantity
+              });
+            }
+          });
+        }
+      } else {
+        const getDetailUrl = `https://cobedenim.mshopkeeper.vn/salecloud/backendg2/api/v1/SAInvoice/getdetail?refId=${encodeURIComponent(refId)}`;
+        const dRes = await fetch(getDetailUrl, { headers: reqHeaders, signal: AbortSignal.timeout(15000) });
+        if (dRes.ok) {
+          const dJson = await dRes.json();
+          const details = (dJson.Data && dJson.Data.SAInvoiceDetails) || dJson.SAInvoiceDetails || [];
+          details.forEach(dt => {
+            resolvedItems.push({
+              sku: dt.SKUCode,
+              parentId: dt.InventoryItemParentID || dt.InventoryItemParent || dt.ParentID,
+              parentSku: dt.SKUCodeParent,
+              quantity: dt.Quantity
+            });
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(`[TARGETED-SYNC] Không thể tải chi tiết chứng từ ${refId}:`, e.message);
+    }
+  }
+
+  if (resolvedItems.length === 0 && !refId) {
+    return {
+      success: false,
+      message: 'Không tìm thấy danh sách sản phẩm cần đồng bộ.'
+    };
+  }
+
+  const products = getProducts();
+  const parentIdSet = new Set();
+  const itemSkuSet = new Set();
+
+  const GUID_REGEX = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/i;
+  function extractGuid(str) {
+    if (!str) return null;
+    const m = String(str).match(GUID_REGEX);
+    return m ? m[0].toLowerCase() : null;
+  }
+
+  resolvedItems.forEach(it => {
+    const guid = extractGuid(it.parentId);
+    if (guid && guid !== '00000000-0000-0000-0000-000000000000') {
+      parentIdSet.add(guid);
+    }
+    if (it.sku) {
+      itemSkuSet.add(String(it.sku).toUpperCase().trim());
+    }
+    if (it.parentSku) {
+      const pSku = String(it.parentSku).toUpperCase().trim();
+      const found = products.find(p => String(p.parentSku || '').toUpperCase().trim() === pSku);
+      if (found && found.id) {
+        const pGuid = extractGuid(found.id);
+        if (pGuid) parentIdSet.add(pGuid);
+      }
+    }
+  });
+
+  // Nếu có item chưa xác định được parentId, dò trong products.json
+  if (itemSkuSet.size > 0) {
+    products.forEach(p => {
+      const cardSku = String(p.sku || '').toUpperCase().trim();
+      const parentSku = String(p.parentSku || '').toUpperCase().trim();
+      const hasVariant = (p.variants || []).some(v => itemSkuSet.has(String(v.skuVariant || '').toUpperCase().trim()));
+
+      if (hasVariant || itemSkuSet.has(cardSku) || itemSkuSet.has(parentSku)) {
+        const pGuid = extractGuid(p.id);
+        if (pGuid) parentIdSet.add(pGuid);
+      }
+    });
+  }
+
+  if (parentIdSet.size === 0) {
+    return {
+      success: false,
+      message: 'Không xác định được InventoryItemID cha để lấy tồn kho MISA.'
+    };
+  }
+
+  // Kéo tồn kho thực tế từng size/màu của từng mã cha từ endpoint instocks/detail
+  // Đảm bảo lấy đúng ngày theo múi giờ Việt Nam (UTC+7)
+  const nowVn = new Date(Date.now() + 7 * 3600 * 1000);
+  const today = nowVn.toISOString().split('T')[0];
+  const stockDetailMap = new Map();
+
+  await Promise.all(Array.from(parentIdSet).map(async (pId) => {
+    try {
+      const u = `https://cobedenim.mshopkeeper.vn/backendg2/api/instocks/detail?_dc=${Date.now()}&fromDate=${today}T00:00:00&toDate=${today}T23:59:59&branchID=${targetBranchId}&stockID=00000000-0000-0000-0000-000000000000&inventoryItemID=${pId}&showOrderedQuantity=false&UnitID=00000000-0000-0000-0000-000000000000&lotID=&expiryDate=&isShowAllDetail=true`;
+      const r = await fetch(u, { headers: reqHeaders, signal: AbortSignal.timeout(15000) });
+      if (r.ok) {
+        const d = await r.json();
+        (d.Data || []).forEach(it => {
+          if (it.SKUCode) {
+            stockDetailMap.set(String(it.SKUCode).toUpperCase().trim(), Number(it.InstockQuantity) || 0);
+          }
+        });
+      }
+    } catch (e) {
+      console.warn(`[TARGETED-SYNC] Lỗi lấy tồn kho cho mã cha ${pId}:`, e.message);
+    }
+  }));
+
+  // Cập nhật các biến thể trong danh sách sản phẩm
+  const updatedCards = [];
+  const nowIso = new Date().toISOString();
+
+  products.forEach(p => {
+    let cardModified = false;
+    const pIdFromCard = extractGuid(p.id);
+    const isTargetParent = pIdFromCard && parentIdSet.has(pIdFromCard);
+
+    if (Array.isArray(p.variants) && p.variants.length > 0) {
+      p.variants.forEach(v => {
+        const vSku = String(v.skuVariant || '').toUpperCase().trim();
+        if (stockDetailMap.has(vSku)) {
+          v.stock = stockDetailMap.get(vSku);
+          cardModified = true;
+        }
+      });
+    }
+
+    if (cardModified || isTargetParent) {
+      p.totalStock = (p.variants || []).reduce((acc, v) => acc + (Number(v.stock) || 0), 0);
+      p.status = p.totalStock <= 0 ? 'out_of_stock' : 'in_stock';
+      p.updatedAt = nowIso;
+      updatedCards.push(p);
+    }
+  });
+
+  // Nếu sản phẩm này hoàn toàn mới (chưa có trong products.json), tự động tải chi tiết và thêm mới
+  for (const pId of parentIdSet) {
+    const exists = products.some(p => extractGuid(p.id) === pId);
+    if (!exists && stockDetailMap.size > 0) {
+      try {
+        console.log(`[TARGETED-SYNC] Phát hiện sản phẩm mới ${pId}, đang tải thông tin chi tiết từ ByParentID...`);
+        const byParentUrl = `https://cobedenim.mshopkeeper.vn/backendg2/api/InventoryItem/ByParentID?parentId=${pId}&page=1&start=0&limit=100`;
+        const bpRes = await fetch(byParentUrl, { headers: reqHeaders, signal: AbortSignal.timeout(15000) });
+        if (bpRes.ok) {
+          const bpData = await bpRes.json();
+          const children = bpData.Data || [];
+          if (children.length > 0) {
+            const colorGroups = new Map();
+            children.forEach(c => {
+              const col = String(c.Color || 'Tiêu chuẩn').trim();
+              if (!colorGroups.has(col)) colorGroups.set(col, []);
+              colorGroups.get(col).push(c);
+            });
+
+            for (const [colName, group] of colorGroups) {
+              const first = group[0];
+              const baseSku = String(first.SKUCodeParent || first.SKUCode || '').split('-')[0].trim();
+              const cat = first.ItemCategoryName || 'Khác';
+              const variants = group.map(c => {
+                const cSku = String(c.SKUCode || '').toUpperCase().trim();
+                return {
+                  color: colName,
+                  size: String(c.Size || 'Freesize').trim().toUpperCase(),
+                  stock: stockDetailMap.get(cSku) ?? 0,
+                  skuVariant: c.SKUCode,
+                  unitPrice: Number(c.UnitPrice) || 350000
+                };
+              });
+
+              const totalStock = variants.reduce((acc, v) => acc + (Number(v.stock) || 0), 0);
+              const card = {
+                id: `cobe-${pId}-${Buffer.from(colName).toString('hex').slice(0, 8)}`,
+                sku: group[0].SKUCode ? group[0].SKUCode.replace(/-[A-Z0-9]+$/i, '') : baseSku,
+                parentSku: baseSku,
+                name: first.InventoryItemName ? first.InventoryItemName.replace(/\s*\([^)]*\)$/, '') : baseSku,
+                brand: 'Cobe Denim',
+                category: cat,
+                fullCategory: cat,
+                color: colName,
+                retailPrice: Number(first.UnitPrice) || 350000,
+                pictureId: first.PictureID || null,
+                imageUrl: first.PictureID ? `/api/images/${first.PictureID}.jpg` : '/images/placeholder.svg',
+                description: `Sản phẩm ${first.InventoryItemName} chính hãng.`,
+                updatedAt: nowIso,
+                variants,
+                totalStock,
+                status: totalStock <= 0 ? 'out_of_stock' : 'in_stock'
+              };
+              products.unshift(card);
+              updatedCards.push(card);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`[TARGETED-SYNC] Lỗi tạo card sản phẩm mới ${pId}:`, err.message);
+      }
+    }
+  }
+
+  if (updatedCards.length > 0) {
+    saveProducts(products);
+    config.lastSyncTime = nowIso;
+    saveConfig(config);
+
+    // Bắn ngầm sang Cloudflare Edge để KV cập nhật ngay
+    forwardTargetedSyncToCloudflare(updatedCards).catch(() => {});
+  }
+
+  const durationMs = Date.now() - tStart;
+  console.log(`[TARGETED-SYNC] ✓ Đã cập nhật tức thì ${updatedCards.length} card sản phẩm (${stockDetailMap.size} biến thể) cho "${action}" trong ${durationMs}ms.`);
+
+  return {
+    success: true,
+    action,
+    parentIds: Array.from(parentIdSet),
+    updatedCardsCount: updatedCards.length,
+    updatedVariantsCount: stockDetailMap.size,
+    durationMs,
+    lastSyncTime: config.lastSyncTime
+  };
+}
+
+// API: Real-Time Targeted Sync (Kích hoạt từ POS Thu ngân / Quản trị MShopKeeper)
+app.post('/api/sync/targeted-products', async (req, res) => {
+  try {
+    const { action, items, refId, token, branchId } = req.body || {};
+    const result = await syncTargetedProducts({ action, items, refId, token, branchId });
+    if (result.success) {
+      return res.json(result);
+    }
+    return res.status(400).json(result);
+  } catch (err) {
+    console.error('[TARGETED-SYNC] Lỗi xử lý:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// API: Get Sync Status (Fast endpoint for live frontend auto-refresh)
+app.get('/api/sync/status', (req, res) => {
+  const config = getConfig();
+  const products = getProducts();
   res.json({
     success: true,
+    lastSyncTime: config.lastSyncTime || null,
+    totalProducts: products.length,
+    timestamp: Date.now()
+  });
+});
+
+// API: Get Real-time Progress (Both MShopKeeper inventory sync & Cloudinary image fill)
+app.get('/api/sync/progress', (req, res) => {
+  const config = getConfig();
+  res.json({
+    success: true,
+    lastSyncTime: config.lastSyncTime || null,
     sync: getMshopSyncProgress(),
     images: getFillProgress()
   });
@@ -2028,6 +2478,17 @@ function startAutoSyncScheduler() {
       return;
     }
 
+    // KIỂM TRA PHIÊN ĐĂNG NHẬP THỰC TẾ VỚI MISA
+    console.log(`[AUTO-SYNC] [${timeStr}] Đang kiểm tra hiệu lực phiên đăng nhập (${tokenInfo.browser})...`);
+    const sessionCheck = await verifyMshopkeeperSession(tokenInfo.token, currentConfig.branchId);
+
+    if (!sessionCheck.valid) {
+      console.log(`[AUTO-SYNC] ⚠ Phiên đăng nhập (${tokenInfo.browser}) không còn hợp lệ: ${sessionCheck.message}`);
+      console.log('[AUTO-SYNC] Giữ nguyên dữ liệu kho hiện tại, chờ thu ngân đăng nhập lại trên trình duyệt.');
+      return;
+    }
+
+    console.log(`[AUTO-SYNC] ✓ Phiên đăng nhập (${tokenInfo.browser}) HỢP LỆ! Bắt đầu đồng bộ kho...`);
     try {
       console.log(`[AUTO-SYNC] [${timeStr}] Bắt đầu tự động cập nhật kho từ MShopKeeper (${tokenInfo.browser})...`);
       const result = await performSyncFromMShopKeeper(tokenInfo.token, currentConfig.branchId, tokenInfo.userId, tokenInfo.userName);

@@ -6,10 +6,10 @@
   <title>Cobe Denim — Tra Cứu Tồn Kho CTV & Đại Lý</title>
   <meta name="description" content="Cổng tra cứu tồn kho tức thì theo mã, size, màu sắc cho CTV Cobe Denim kết nối MShopKeeper">
   
-  <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <!-- Fonts: Be Vietnam Pro, Inter & JetBrains Mono (Full Vietnamese Support) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -259,28 +259,71 @@
       <div class="dialog-header">
         <div class="dialog-title-group">
           <div class="dialog-icon-badge">
-            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
               <circle cx="12" cy="12" r="3"/>
             </svg>
           </div>
           <div>
             <h2 class="dialog-heading">Cấu Hình Đồng Bộ MShopKeeper</h2>
-            <div class="dialog-subheading">cobedenim.mshopkeeper.vn • Gói Starter</div>
+            <div class="dialog-subheading">
+              <span class="sub-dot"></span> cobedenim.mshopkeeper.vn • Trực tuyến 24/7
+            </div>
           </div>
         </div>
-        <button class="dialog-close-btn" id="btnCloseSyncModal">✕</button>
+        <button class="dialog-close-btn" id="btnCloseSyncModal" aria-label="Đóng">✕</button>
       </div>
 
       <div class="dialog-body">
-        <div class="sync-summary-card">
-          <div class="summary-line">
-            <span class="summary-label">Lần đồng bộ gần nhất:</span>
-            <span class="summary-val highlight" id="modalLastSyncTime">Chưa cập nhật</span>
+        <!-- Dual Metric Cards Grid -->
+        <div class="sync-summary-grid">
+          <div class="sync-metric-card">
+            <div class="metric-icon-wrap clock">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div class="metric-body">
+              <span class="metric-label">Lần đồng bộ gần nhất</span>
+              <strong class="metric-value highlight" id="modalLastSyncTime">Chưa cập nhật</strong>
+            </div>
           </div>
-          <div class="summary-line">
-            <span class="summary-label">Số lượng sản phẩm:</span>
-            <span class="summary-val" id="modalTotalItems">8 mẫu</span>
+          <div class="sync-metric-card">
+            <div class="metric-icon-wrap box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <div class="metric-body">
+              <span class="metric-label">Dữ liệu trong kho</span>
+              <strong class="metric-value" id="modalTotalItems">0 mẫu</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Session & Token Validator -->
+        <div class="session-checker-card" id="sessionCheckerCard">
+          <div class="session-card-left">
+            <span class="session-pulse-indicator idle" id="sessionIndicator"></span>
+            <div class="session-text-group">
+              <div class="session-status-row">
+                <span class="session-title-label">Phiên MShopKeeper:</span>
+                <span class="session-status-badge idle" id="sessionStatusBadge">Chưa kiểm tra</span>
+              </div>
+              <p class="session-desc-text" id="sessionStatusDesc">Bấm "Kiểm tra phiên" để xác thực token hoặc tự bốc phiên từ Chrome.</p>
+            </div>
+          </div>
+          <div class="session-card-right">
+            <button type="button" id="btnCheckSession" class="btn-check-session" title="Kiểm tra phiên đăng nhập MShopKeeper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-mini">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <span>Kiểm Tra Phiên</span>
+            </button>
           </div>
         </div>
 
@@ -289,7 +332,7 @@
           <div class="progress-header">
             <div class="progress-title-wrap">
               <span class="progress-dot-pulse"></span>
-              <span id="syncProgressTitle" class="progress-title-text">Đang đồng bộ...</span>
+              <span id="syncProgressTitle" class="progress-title-text">Đang đồng bộ tồn kho...</span>
             </div>
             <span id="syncProgressPercent" class="progress-percent-badge">0%</span>
           </div>
@@ -301,8 +344,19 @@
           </div>
 
           <div class="progress-meta-row">
-            <span id="syncProgressDetail" class="progress-detail-text">Đang chuẩn bị...</span>
+            <span id="syncProgressDetail" class="progress-detail-text">Đang kết nối MShopKeeper...</span>
             <span id="syncProgressElapsed" class="progress-elapsed-badge">0s</span>
+          </div>
+
+          <!-- Step Indicators -->
+          <div class="progress-steps-row">
+            <span class="step-chip active" id="syncStepPill1">1. Kết nối</span>
+            <span class="step-arrow">→</span>
+            <span class="step-chip" id="syncStepPill2">2. Tải mẫu</span>
+            <span class="step-arrow">→</span>
+            <span class="step-chip" id="syncStepPill3">3. Đọc tồn</span>
+            <span class="step-arrow">→</span>
+            <span class="step-chip" id="syncStepPill4">4. Lưu kho</span>
           </div>
 
           <!-- Extra Image Stats (Quét & nạp ảnh) -->
@@ -324,37 +378,72 @@
         </div>
 
         <div class="tabs-nav">
-          <button class="nav-tab active" data-tab="direct-sync">1. Đồng Bộ Web (Dùng Token)</button>
+          <button class="nav-tab active" data-tab="direct-sync">1. Web (Dùng Token)</button>
           <button class="nav-tab" data-tab="local-sync">2. Laptop Cửa Hàng</button>
-          <button class="nav-tab" data-tab="excel-sync">3. Nạp File Excel MISA</button>
-          <button class="nav-tab" data-tab="images-sync">4. Đồng Bộ Ảnh Thật</button>
+          <button class="nav-tab" data-tab="excel-sync">3. Nạp File Excel</button>
+          <button class="nav-tab" data-tab="images-sync">4. Quét Ảnh Thật</button>
         </div>
 
-        <!-- Tab 1: Web Direct Sync with Token (Works 100% on Cloudflare without laptop) -->
+        <!-- Tab 1: Web Direct Sync with Token -->
         <div class="tab-pane active" id="tab-direct-sync">
-          <p class="pane-text">Đồng bộ tồn kho trực tiếp từ MShopKeeper MISA mọi lúc mọi nơi ngay trên trình duyệt (không cần mở máy tính cửa hàng):</p>
+          <p class="pane-text">Đồng bộ tồn kho trực tiếp từ MShopKeeper MISA mọi lúc mọi nơi ngay trên trình duyệt (hoạt động 24/7 kể cả khi máy tính shop đã tắt):</p>
           
           <div class="input-block">
-            <label for="tokenInput" class="input-label">Dán Access Token MShopKeeper vào đây:</label>
-            <textarea id="tokenInput" class="input-textarea" rows="3" placeholder="Dán Bearer eyJ... hoặc token lấy từ tab MShopKeeper vào đây..."></textarea>
+            <div class="input-label-row">
+              <label for="tokenInput" class="input-label">Dán Access Token MShopKeeper vào đây:</label>
+              <button type="button" id="btnQuickPasteToken" class="btn-quick-paste" title="Dán nhanh từ Clipboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-mini">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                </svg>
+                <span>Dán nhanh</span>
+              </button>
+            </div>
+            <div class="textarea-wrap">
+              <textarea id="tokenInput" class="input-textarea" rows="3" placeholder="Dán Bearer eyJ... hoặc token lấy từ tab MShopKeeper vào đây..."></textarea>
+            </div>
           </div>
 
-          <button id="btnTriggerTokenSync" class="btn-primary-block" style="background: linear-gradient(135deg, #10b981, #059669); margin-top: 0.5rem; font-weight: 600;">
-            ⚡ Bắt Đầu Đồng Bộ Tồn Kho Ngay
+          <button id="btnTriggerTokenSync" class="btn-sync-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-action-icon">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            <span>Bắt Đầu Đồng Bộ Tồn Kho Ngay</span>
           </button>
 
-          <div style="background: var(--bg-inset); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 0.75rem; text-align: center; margin-top: 0.85rem;">
-            <a 
-              id="bookmarkletLink"
-              href="javascript:void(0);" 
-              class="action-btn" 
-              style="background: var(--accent-primary); color: #fff; padding: 0.55rem 1rem; display: inline-flex;"
-              onclick="event.preventDefault(); alert('👉 Bạn hãy KÉO nút này lên thanh Bookmark (Ctrl+Shift+B) của trình duyệt. Khi đang ở tab cobedenim.mshopkeeper.vn chỉ cần bấm bookmark là xong!');"
-            >
-              ⭐ Kéo vào Bookmark: Lấy Token 1-Click
-            </a>
-            <div style="font-size: 0.72rem; color: var(--text-tertiary); margin-top: 0.4rem;">
-              Đang ở tab mshopkeeper → Bấm Bookmark → Tự động nhảy về trang này & đồng bộ tồn kho ngay lập tức!
+          <!-- Pro Fast-Track Bookmarklet Card -->
+          <div class="bookmarklet-pro-card">
+            <div class="bookmarklet-card-header">
+              <div class="bookmarklet-badge">⭐ Mẹo Lấy Token 1-Click</div>
+              <span class="bookmarklet-sub">Kéo vào Bookmark (Ctrl+Shift+B)</span>
+            </div>
+            <div class="bookmarklet-drag-area">
+              <a 
+                id="bookmarkletLink"
+                href="javascript:void(0);" 
+                class="bookmarklet-drag-capsule" 
+                title="Kéo nút này thả lên thanh Bookmark Bar của trình duyệt"
+                onclick="event.preventDefault(); alert('👉 Bạn hãy KÉO nút này lên thanh Bookmark (Ctrl+Shift+B) của trình duyệt. Khi đang ở tab cobedenim.mshopkeeper.vn chỉ cần bấm bookmark là xong!');"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" class="star-icon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span>Kéo nút này lên Bookmark Bar</span>
+              </a>
+            </div>
+            <div class="bookmarklet-steps-timeline">
+              <div class="step-point">
+                <span class="step-num">1</span>
+                <span class="step-txt">Mở MShopKeeper</span>
+              </div>
+              <div class="step-divider">→</div>
+              <div class="step-point">
+                <span class="step-num">2</span>
+                <span class="step-txt">Bấm Bookmark</span>
+              </div>
+              <div class="step-divider">→</div>
+              <div class="step-point">
+                <span class="step-num">3</span>
+                <span class="step-txt">Tự động đồng bộ</span>
+              </div>
             </div>
           </div>
         </div>

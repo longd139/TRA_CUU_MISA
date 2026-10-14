@@ -24,7 +24,8 @@ export async function onRequestPost(context) {
       'x-misa-language': 'vi-VN'
     };
 
-    const today = new Date().toISOString().split('T')[0];
+    const nowVn = new Date(Date.now() + 7 * 3600 * 1000);
+    const today = nowVn.toISOString().split('T')[0];
     const stockUrl = `https://cobedenim.mshopkeeper.vn/backendg2/api/instocks?_dc=${Date.now()}&fromDate=${today}T00:00:00&toDate=${today}T23:59:59&branchID=${branchId}&stockID=00000000-0000-0000-0000-000000000000&inventoryItemCategoryID=00000000-0000-0000-0000-000000000000&inventoryItem=&showOrderedQuantity=false&UnitID=00000000-0000-0000-0000-000000000000&instockType=0&instockStatusID=0&trancationStatusID=0&quantityStatusID=0&BrandID=00000000-0000-0000-0000-000000000000&page=1&start=0&limit=1000`;
 
     // 1. Fetch real-time instocks

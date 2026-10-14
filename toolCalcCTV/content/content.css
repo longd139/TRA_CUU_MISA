@@ -1,0 +1,377 @@
+/* content.css - Styles for CTV Price Display & Anti-Duplicate Order Checker */
+
+:root {
+  --ctv-primary: #4f46e5;
+  --ctv-primary-hover: #4338ca;
+  --ctv-success: #10b981;
+  --ctv-warning: #f59e0b;
+  --ctv-danger: #ef4444;
+  --ctv-bg-tag: rgba(79, 70, 229, 0.12);
+  --ctv-border: rgba(79, 70, 229, 0.35);
+  --ctv-text: #3730a3;
+}
+
+/* CTV Badge container placed cleanly below unit price */
+.ctv-price-container {
+  display: block !important;
+  margin-top: 3px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  user-select: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  clear: both !important;
+  text-align: right !important;
+}
+
+.ctv-price-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 2px 7px !important;
+  border-radius: 5px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+  line-height: 1.3 !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
+  background-color: var(--ctv-bg-tag) !important;
+  border: 1px solid var(--ctv-border) !important;
+  color: var(--ctv-text) !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.ctv-price-badge:hover {
+  background-color: rgba(79, 70, 229, 0.22) !important;
+  border-color: var(--ctv-primary) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 5px rgba(79, 70, 229, 0.2) !important;
+}
+
+/* State when price is 0 */
+.ctv-price-badge.ctv-zero {
+  background-color: #fef3c7 !important;
+  border: 1.5px dashed #d97706 !important;
+  color: #b45309 !important;
+}
+
+.ctv-price-badge.ctv-zero:hover {
+  background-color: #fde68a !important;
+  border-color: #b45309 !important;
+}
+
+/* Inline Input when editing */
+.ctv-inline-editor-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin-top: 2px !important;
+}
+
+.ctv-inline-input {
+  width: 90px !important;
+  padding: 3px 6px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #1e1b4b !important;
+  background-color: #ffffff !important;
+  border: 2px solid var(--ctv-primary) !important;
+  border-radius: 4px !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.25) !important;
+  box-sizing: border-box !important;
+  text-align: right !important;
+}
+
+.ctv-inline-input:focus {
+  border-color: #4338ca !important;
+}
+
+/* Save Flash Animation */
+@keyframes ctv-flash-success {
+  0% { background-color: rgba(16, 185, 129, 0.6) !important; border-color: #10b981 !important; }
+  100% { background-color: var(--ctv-bg-tag) !important; border-color: var(--ctv-border) !important; }
+}
+
+.ctv-price-badge.ctv-just-saved {
+  animation: ctv-flash-success 1.2s ease-out !important;
+}
+
+/* ==========================================================================
+   ANTI-DUPLICATE ORDER CHECKER (UI ON POS)
+   ========================================================================== */
+
+/* Floating / Toolbar Check Button */
+.ctv-check-dup-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35) !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+.ctv-check-dup-btn:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #2563eb 100%) !important;
+  transform: translateY(-1.5px) !important;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.45) !important;
+}
+
+.ctv-check-dup-btn:active {
+  transform: translateY(0) !important;
+}
+
+.ctv-check-dup-btn.ctv-btn-large {
+  width: 100% !important;
+  justify-content: center !important;
+  padding: 10px 18px !important;
+  font-size: 13.5px !important;
+  letter-spacing: 0.3px !important;
+  border-radius: 8px !important;
+}
+
+.ctv-check-dup-btn.loading {
+  opacity: 0.8 !important;
+  cursor: wait !important;
+  pointer-events: none !important;
+}
+
+/* Floating Quick Action Widget (Bottom Left or Top Action Bar) */
+.ctv-floating-action-bar {
+  position: fixed !important;
+  bottom: 24px !important;
+  left: 24px !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  padding: 8px 12px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid #e0e7ff !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.ctv-cache-info {
+  font-size: 11.5px !important;
+  color: #475569 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.ctv-cache-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background-color: #10b981 !important;
+  display: inline-block !important;
+}
+
+/* Toast Notifications on POS */
+.ctv-pos-toast {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  z-index: 1000000 !important;
+  padding: 12px 20px !important;
+  border-radius: 8px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  animation: ctv-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  max-width: 450px !important;
+  line-height: 1.4 !important;
+}
+
+.ctv-pos-toast.toast-success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 25px rgba(5, 150, 105, 0.4) !important;
+}
+
+.ctv-pos-toast.toast-success span,
+.ctv-pos-toast.toast-success div {
+  color: #ffffff !important;
+}
+
+.ctv-pos-toast.toast-warning {
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 25px rgba(217, 119, 6, 0.4) !important;
+}
+
+.ctv-pos-toast.toast-warning span,
+.ctv-pos-toast.toast-warning div {
+  color: #ffffff !important;
+}
+
+@keyframes ctv-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Full Screen Modal Overlay for Duplicate Warning */
+.ctv-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  backdrop-filter: blur(4px) !important;
+  z-index: 1000001 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  animation: ctv-fade-in 0.2s ease-out !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+@keyframes ctv-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ctv-warning-dialog {
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  width: 100% !important;
+  max-width: 620px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
+  overflow: hidden !important;
+  border-top: 6px solid #ef4444 !important;
+  animation: ctv-pop-up 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+@keyframes ctv-pop-up {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.ctv-dialog-header {
+  padding: 16px 22px !important;
+  background-color: #fef2f2 !important;
+  border-bottom: 1px solid #fee2e2 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+}
+
+.ctv-dialog-header .icon-alert {
+  font-size: 28px !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+.ctv-dialog-header h3 {
+  margin: 0 0 4px 0 !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  color: #991b1b !important;
+  letter-spacing: -0.2px !important;
+  white-space: nowrap !important;
+}
+
+.ctv-dialog-body {
+  padding: 20px !important;
+}
+
+.ctv-dup-info-card {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  padding: 14px !important;
+  margin-bottom: 14px !important;
+}
+
+.ctv-info-row {
+  display: flex !important;
+  margin-bottom: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+.ctv-info-row:last-child {
+  margin-bottom: 0 !important;
+}
+
+.ctv-info-label {
+  width: 125px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  flex-shrink: 0 !important;
+}
+
+.ctv-info-value {
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  flex: 1 !important;
+}
+
+.ctv-dup-items-list {
+  max-height: 150px !important;
+  overflow-y: auto !important;
+  background-color: #fff1f2 !important;
+  border: 1px solid #fecdd3 !important;
+  border-radius: 6px !important;
+  padding: 10px 14px !important;
+  font-size: 12.5px !important;
+}
+
+.ctv-dup-item-entry {
+  padding: 4px 0 !important;
+  color: #9f1239 !important;
+  font-weight: 600 !important;
+  border-bottom: 1px dashed #fda4af !important;
+}
+
+.ctv-dup-item-entry:last-child {
+  border-bottom: none !important;
+}
+
+.ctv-dialog-actions {
+  padding: 14px 20px !important;
+  background-color: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+}
+
+.ctv-btn-dismiss {
+  padding: 8px 20px !important;
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.ctv-btn-dismiss:hover {
+  background-color: #dc2626 !important;
+}
+

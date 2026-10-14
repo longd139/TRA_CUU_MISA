@@ -88,6 +88,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnStartFillImages = document.getElementById('btnStartFillImages');
   let progressPollingTimer = null;
 
+  // Live Session Checker Elements
+  const sessionCheckerCard = document.getElementById('sessionCheckerCard');
+  const sessionIndicator = document.getElementById('sessionIndicator');
+  const sessionStatusBadge = document.getElementById('sessionStatusBadge');
+  const sessionStatusDesc = document.getElementById('sessionStatusDesc');
+  const btnCheckSession = document.getElementById('btnCheckSession');
+
   // Initialize
   init();
 
@@ -259,37 +266,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Sync modal events with Admin PIN protection
-    btnOpenSync.addEventListener('click', async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const isParamAdmin = urlParams.get('admin') === '1' || urlParams.get('admin') === 'cobe';
-      const isSessionAuth = sessionStorage.getItem('cobe_admin_verified') === 'true';
-
-      if (isParamAdmin || isSessionAuth) {
-        openSyncModal();
-        return;
-      }
-
-      const enteredPin = prompt('🔒 Nhập mã PIN Quản trị để mở Đồng bộ Kho (Mặc định: 1234):');
-      if (enteredPin === null) return;
-
-      try {
-        const res = await fetch('/api/sync/verify-pin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: enteredPin })
-        });
-        const data = await res.json();
-        if (data.success) {
-          sessionStorage.setItem('cobe_admin_verified', 'true');
-          showToast('Xác thực Quản trị thành công!');
-          openSyncModal();
-        } else {
-          showToast('Mã PIN không đúng. Khu vực này dành cho Quản lý.', 'error');
-        }
-      } catch (e) {
-        showToast('Lỗi kết nối xác thực PIN', 'error');
-      }
+    // Sync modal events (mở trực tiếp không cần nhập mã PIN)
+    btnOpenSync.addEventListener('click', () => {
+      openSyncModal();
     });
     btnCloseSyncModal.addEventListener('click', closeSyncModal);
     syncModalBackdrop.addEventListener('click', closeSyncModal);
@@ -354,28 +333,121 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 500);
     }
 
-    // Auto-detect token from Chrome/Edge LevelDB
+    // Helper: Kiểm tra phiên đăng nhập MShopKeeper (LevelDB hoặc Token nhập vào)
+    async function checkSessionStatus(opts = {}) {
+      const silent = Boolean(opts.silent);
+      if (!sessionCheckerCard || !sessionIndicator || !sessionStatusBadge || !sessionStatusDesc) return { valid: false };
+
+      if (btnCheckSession) {
+        btnCheckSession.disabled = true;
+        btnCheckSession.innerHTML = '<span class="btn-spinner-mini"></span> <span>Đang kiểm tra...</span>';
+      }
+
+      sessionCheckerCard.classList.remove('valid', 'expired');
+      sessionIndicator.className = 'session-pulse-indicator loading';
+      sessionStatusBadge.className = 'session-status-badge loading';
+      sessionStatusBadge.textContent = 'Đang kiểm tra...';
+      sessionStatusDesc.textContent = 'Đang gửi tín hiệu kiểm tra tới MShopKeeper...';
+
+      const inputToken = tokenInput ? tokenInput.value.trim() : '';
+
+      try {
+        let res;
+        if (inputToken) {
+          res = await fetch('/api/sync/check-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: inputToken })
+          });
+        } else {
+          res = await fetch('/api/sync/check-session');
+        }
+
+        const data = await res.json();
+
+        if (data.success && data.valid) {
+          sessionCheckerCard.classList.remove('expired');
+          sessionCheckerCard.classList.add('valid');
+          sessionIndicator.className = 'session-pulse-indicator valid';
+          sessionStatusBadge.className = 'session-status-badge valid';
+          sessionStatusBadge.textContent = data.browser ? `Hợp lệ (${data.browser}) ✓` : 'Hợp lệ ✓';
+          sessionStatusDesc.textContent = 'Phiên đăng nhập còn hạn, sẵn sàng đồng bộ tồn kho!';
+
+          if (tokenInput && !tokenInput.value.trim() && data.token) {
+            tokenInput.value = data.token;
+          }
+
+          if (!silent) {
+            showToast('Phiên đăng nhập MShopKeeper hợp lệ!');
+          }
+          return { valid: true, token: data.token };
+        } else if (data.expired) {
+          sessionCheckerCard.classList.remove('valid');
+          sessionCheckerCard.classList.add('expired');
+          sessionIndicator.className = 'session-pulse-indicator expired';
+          sessionStatusBadge.className = 'session-status-badge expired';
+          sessionStatusBadge.textContent = 'Hết hạn ⚠';
+          sessionStatusDesc.textContent = 'Phiên đã hết hạn. Hãy mở tab cobedenim.mshopkeeper.vn trên Chrome để làm mới phiên.';
+          if (!silent) {
+            showToast('Phiên đăng nhập MShopKeeper đã hết hạn!', 'error');
+          }
+          return { valid: false, expired: true };
+        } else {
+          sessionCheckerCard.classList.remove('valid');
+          sessionCheckerCard.classList.add('expired');
+          sessionIndicator.className = 'session-pulse-indicator expired';
+          sessionStatusBadge.className = 'session-status-badge expired';
+          sessionStatusBadge.textContent = 'Chưa sẵn sàng';
+          sessionStatusDesc.textContent = data.message || 'Chưa tìm thấy phiên đăng nhập. Vui lòng dán token hoặc mở Chrome.';
+          if (!silent) {
+            showToast(data.message || 'Chưa xác thực được phiên đăng nhập', 'error');
+          }
+          return { valid: false, message: data.message };
+        }
+      } catch (err) {
+        sessionCheckerCard.classList.remove('valid');
+        sessionCheckerCard.classList.add('expired');
+        sessionIndicator.className = 'session-pulse-indicator expired';
+        sessionStatusBadge.className = 'session-status-badge expired';
+        sessionStatusBadge.textContent = 'Lỗi kết nối';
+        sessionStatusDesc.textContent = 'Không thể kết nối đến máy chủ để kiểm tra phiên.';
+        if (!silent) {
+          showToast('Lỗi kiểm tra phiên: ' + err.message, 'error');
+        }
+        return { valid: false, error: err.message };
+      } finally {
+        if (btnCheckSession) {
+          btnCheckSession.disabled = false;
+          btnCheckSession.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-mini"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Kiểm Tra Phiên</span>';
+        }
+      }
+    }
+
+    // Button: Kiểm tra phiên đăng nhập
+    if (btnCheckSession) {
+      btnCheckSession.addEventListener('click', () => {
+        checkSessionStatus({ silent: false });
+      });
+    }
+
+    // Auto-detect token from Chrome/Edge LevelDB with Session Verification
     const btnAutoDetectToken = document.getElementById('btnAutoDetectToken');
     if (btnAutoDetectToken) {
       btnAutoDetectToken.addEventListener('click', async () => {
         btnAutoDetectToken.disabled = true;
-        btnAutoDetectToken.textContent = '⏳ Đang quét Chrome/Edge...';
+        btnAutoDetectToken.textContent = '⏳ Đang quét Chrome & kiểm tra phiên...';
         try {
-          const res = await fetch('/api/sync/auto-token');
-          const data = await res.json();
-          if (data.success && data.token) {
-            tokenInput.value = data.token;
-            if (data.expired) {
-              showSyncFeedback(`Tìm thấy token từ ${data.browser} nhưng đã hết hạn. Hãy mở tab mshopkeeper trên Chrome rồi bấm lại nhé!`, 'error');
-            } else {
-              showSyncFeedback(`Đã tìm thấy token từ ${data.browser}! Đang tiến hành đồng bộ...`, 'success');
+          const check = await checkSessionStatus({ silent: false });
+          if (check && check.valid) {
+            showSyncFeedback(`Phiên đăng nhập hợp lệ! Đang bắt đầu đồng bộ tồn kho...`, 'success');
+            setTimeout(() => {
               btnTriggerTokenSync.click();
-            }
+            }, 500);
           } else {
-            showSyncFeedback(data.message, 'error');
+            showSyncFeedback(check && check.message ? check.message : 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Hãy mở tab cobedenim.mshopkeeper.vn trên Chrome rồi thử lại.', 'error');
           }
         } catch (e) {
-          showSyncFeedback('Lỗi kết nối máy chủ', 'error');
+          showSyncFeedback('Lỗi kết nối máy chủ: ' + e.message, 'error');
         } finally {
           btnAutoDetectToken.disabled = false;
           btnAutoDetectToken.textContent = '🔍 Tự Động Đọc Token Từ Chrome & Đồng Bộ';
@@ -444,6 +516,26 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.readAsDataURL(file);
     }
 
+    // Quick Paste Token Button
+    const btnQuickPasteToken = document.getElementById('btnQuickPasteToken');
+    if (btnQuickPasteToken) {
+      btnQuickPasteToken.addEventListener('click', async () => {
+        try {
+          const clipText = await navigator.clipboard.readText();
+          if (clipText && clipText.trim()) {
+            tokenInput.value = clipText.trim();
+            showToast('Đã dán Token từ Clipboard!');
+            checkSessionStatus({ silent: false });
+          } else {
+            showToast('Clipboard trống', 'error');
+          }
+        } catch (e) {
+          tokenInput.focus();
+          showToast('Hãy bấm Ctrl+V để dán', 'error');
+        }
+      });
+    }
+
     // Trigger Token Sync (Đồng bộ trực tiếp qua Web hoặc máy trạm)
     btnTriggerTokenSync.addEventListener('click', async () => {
       let token = tokenInput.value.trim();
@@ -452,9 +544,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       token = token.replace(/^Bearer\s+/i, '').trim();
+
       btnTriggerTokenSync.disabled = true;
-      btnTriggerTokenSync.textContent = '⏳ Đang kết nối MShopKeeper & đồng bộ...';
+      btnTriggerTokenSync.innerHTML = '<span class="btn-spinner"></span> Đang đồng bộ kho... <span class="btn-percent-pill" id="btnSyncPercentBadge">10%</span>';
       hideSyncFeedback();
+
+      // Show Live Progress Card Immediately
+      updateSyncProgressUI({
+        title: '⚡ Đang kết nối MShopKeeper...',
+        percent: 10,
+        detail: 'Đang gửi yêu cầu đồng bộ danh mục & tồn kho...',
+        elapsed: 0
+      });
+      syncProgressCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      // Start live polling
+      startProgressPolling('sync');
+
+      // Smooth simulated interpolator in case running on serverless without local progress endpoint
+      let simulatedPercent = 10;
+      const simTimer = setInterval(() => {
+        if (simulatedPercent < 88) {
+          simulatedPercent += Math.floor(Math.random() * 8) + 3;
+          updateSyncProgressUI({ percent: simulatedPercent });
+        }
+      }, 700);
 
       try {
         const res = await fetch('/api/sync/mshopkeeper', {
@@ -462,20 +576,38 @@ document.addEventListener('DOMContentLoaded', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token })
         });
+        clearInterval(simTimer);
         const data = await res.json();
         if (data.success) {
+          updateSyncProgressUI({
+            title: '✓ Hoàn tất đồng bộ kho!',
+            percent: 100,
+            detail: data.message || 'Đã nạp đầy đủ sản phẩm và tồn kho.'
+          });
           showSyncFeedback(data.message, 'success');
           await loadStats();
           await fetchProducts();
           showToast('Đã đồng bộ kho MShopKeeper thành công!');
         } else {
+          updateSyncProgressUI({
+            title: '⚠ Lỗi đồng bộ',
+            detail: data.message || 'Không thể đồng bộ từ MShopKeeper'
+          });
           showSyncFeedback(data.message || 'Lỗi đồng bộ từ MShopKeeper', 'error');
         }
       } catch (err) {
+        clearInterval(simTimer);
+        updateSyncProgressUI({
+          title: '⚠ Lỗi kết nối',
+          detail: err.message
+        });
         showSyncFeedback('Lỗi kết nối: ' + err.message, 'error');
       } finally {
-        btnTriggerTokenSync.disabled = false;
-        btnTriggerTokenSync.textContent = '⚡ Bắt Đầu Đồng Bộ Tồn Kho Ngay';
+        clearInterval(simTimer);
+        setTimeout(() => {
+          btnTriggerTokenSync.disabled = false;
+          btnTriggerTokenSync.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-action-icon"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Bắt Đầu Đồng Bộ Tồn Kho Ngay</span>';
+        }, 1500);
       }
     });
 
@@ -542,6 +674,71 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         showSyncFeedback(`Lỗi định dạng JSON: ${err.message}`, 'error');
       }
+    });
+
+    // Tự động cập nhật tồn kho mới nhất khi người dùng quay lại tab tra cứu
+    // 1. Tự động nhận tín hiệu cập nhật tức thì từ Chrome Extension khi có giao dịch POS / Nhập kho
+    if (window.chrome && chrome.runtime && chrome.runtime.onMessage) {
+      try {
+        chrome.runtime.onMessage.addListener((msg) => {
+          if (msg && msg.action === 'AUTO_REFRESH_PRODUCTS') {
+            console.log('[APP] ⚡ Nhận tín hiệu cập nhật tồn kho tức thì từ Extension!');
+            fetchProducts();
+            loadStats();
+            showToast('⚡ Đã tự động cập nhật tồn kho mới!');
+          }
+        });
+      } catch (e) {}
+    }
+
+    // 2. Tự động theo dõi biến động kho ngầm (Lightweight Status Polling mỗi 3.5s)
+    let currentKnownSyncTime = null;
+    let isPollingSync = false;
+    async function checkLiveSyncStatus() {
+      if (isPollingSync || document.visibilityState !== 'visible') return;
+      isPollingSync = true;
+      try {
+        const res = await fetch('/api/sync/status', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.lastSyncTime) {
+            if (currentKnownSyncTime && data.lastSyncTime !== currentKnownSyncTime) {
+              console.log('[APP] ⚡ Phát hiện biến động kho mới từ máy chủ:', data.lastSyncTime);
+              currentKnownSyncTime = data.lastSyncTime;
+              fetchProducts();
+              loadStats();
+              showToast('⚡ Tồn kho đã tự động cập nhật số lượng mới!');
+            } else {
+              currentKnownSyncTime = data.lastSyncTime;
+            }
+          }
+        }
+      } catch (e) {
+      } finally {
+        isPollingSync = false;
+      }
+    }
+    setInterval(checkLiveSyncStatus, 3500);
+
+    // 3. Tự động cập nhật ngay khi người dùng chuyển lại tab tra cứu
+    let lastVisibilityCheck = Date.now();
+    function refreshOnTabActive() {
+      if (Date.now() - lastVisibilityCheck > 1000) {
+        lastVisibilityCheck = Date.now();
+        fetchProducts();
+        loadStats();
+        checkLiveSyncStatus();
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        refreshOnTabActive();
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      refreshOnTabActive();
     });
   }
 
@@ -1042,11 +1239,43 @@ document.addEventListener('DOMContentLoaded', () => {
     syncModal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     startProgressPolling('auto');
+    checkSessionStatus({ silent: true });
   }
 
   function closeSyncModal() {
     syncModal.style.display = 'none';
     document.body.style.overflow = '';
+  }
+
+  // Helper: Live Progress & UI Step Synchronizer
+  function updateSyncProgressUI({ title, percent, detail, elapsed, step }) {
+    if (!syncProgressCard) return;
+    syncProgressCard.style.display = 'block';
+    if (title && syncProgressTitle) syncProgressTitle.textContent = title;
+    if (percent !== undefined) {
+      const clamped = Math.min(100, Math.max(0, Math.round(percent)));
+      if (syncProgressPercent) syncProgressPercent.textContent = `${clamped}%`;
+      if (syncProgressBar) syncProgressBar.style.width = `${clamped}%`;
+      const btnPercent = document.getElementById('btnSyncPercentBadge');
+      if (btnPercent) {
+        btnPercent.textContent = `${clamped}%`;
+        btnPercent.style.display = 'inline-block';
+      }
+    }
+    if (detail && syncProgressDetail) syncProgressDetail.textContent = detail;
+    if (elapsed !== undefined && syncProgressElapsed) syncProgressElapsed.textContent = `${elapsed}s`;
+
+    // Dynamic Step Pills (1 to 4)
+    if (step) {
+      for (let i = 1; i <= 4; i++) {
+        const pill = document.getElementById(`syncStepPill${i}`);
+        if (pill) {
+          pill.classList.remove('active', 'done');
+          if (i < step) pill.classList.add('done');
+          else if (i === step) pill.classList.add('active');
+        }
+      }
+    }
   }
 
   // Real-time Progress Polling Function
@@ -1084,15 +1313,17 @@ document.addEventListener('DOMContentLoaded', () => {
             btnStartFillImages.textContent = '⏳ Đang quét & nạp ảnh...';
           }
         } else if (isSyncRunning) {
-          syncProgressCard.style.display = 'block';
-          syncProgressTitle.textContent = `⚡ [Bước ${sync.step}/${sync.totalSteps}] ${sync.stepTitle}`;
-          syncProgressPercent.textContent = `${sync.percent}%`;
-          syncProgressBar.style.width = `${sync.percent}%`;
-          syncProgressDetail.textContent = sync.detail || 'Đang xử lý dữ liệu...';
           const elapsed = sync.startedAt 
             ? Math.max(0, Math.round((Date.now() - new Date(sync.startedAt).getTime()) / 1000))
             : 0;
-          syncProgressElapsed.textContent = `${elapsed}s`;
+
+          updateSyncProgressUI({
+            title: `⚡ [Bước ${sync.step || 1}/${sync.totalSteps || 4}] ${sync.stepTitle || 'Đang đồng bộ...'}`,
+            percent: sync.percent || 10,
+            detail: sync.detail || 'Đang xử lý dữ liệu từ MShopKeeper...',
+            elapsed,
+            step: sync.step || 1
+          });
           syncImageExtraRow.style.display = 'none';
         } else {
           // If neither is running
@@ -1112,11 +1343,12 @@ document.addEventListener('DOMContentLoaded', () => {
             statImgFilled.textContent = images.filled;
             statImgSkipped.textContent = images.skipped;
           } else if (sync && sync.finishedAt && sync.percent === 100 && mode === 'sync') {
-            syncProgressCard.style.display = 'block';
-            syncProgressTitle.textContent = '✓ Hoàn tất đồng bộ kho!';
-            syncProgressPercent.textContent = '100%';
-            syncProgressBar.style.width = '100%';
-            syncProgressDetail.textContent = sync.detail;
+            updateSyncProgressUI({
+              title: '✓ Hoàn tất đồng bộ kho!',
+              percent: 100,
+              detail: sync.detail || 'Dữ liệu đã được nạp hoàn chỉnh.',
+              step: 4
+            });
           } else if (mode === 'auto') {
             // In auto mode, if neither was running, hide progress card
             syncProgressCard.style.display = 'none';
@@ -1133,7 +1365,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     poll();
-    progressPollingTimer = setInterval(poll, 1000);
+    progressPollingTimer = setInterval(poll, 450);
   }
 
   function showSyncFeedback(msg, type) {
